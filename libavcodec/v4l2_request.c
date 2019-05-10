@@ -29,6 +29,7 @@
 #include "v4l2_request.h"
 #include "media.h"
 #include "videodev2.h"
+#include "h264-ctrls.h"
 
 #define V4L2_REQUEST_VIDEO_PATH "/dev/video0"
 #define V4L2_REQUEST_MEDIA_PATH "/dev/media0"
@@ -63,10 +64,17 @@ static int v4l2_request_set_controls(V4L2RequestContext *ctx, int request_fd, st
         .request_fd = request_fd,
         .which = (request_fd >= 0) ? V4L2_CTRL_WHICH_REQUEST_VAL : 0,
     };
+    unsigned int i;
 
     if (!control || !count)
         return 0;
 
+    for (i = 0; i < count; i++) {
+        if (control[i].id == V4L2_CID_MPEG_VIDEO_H264_DECODE_PARAMS) {
+		struct v4l2_ctrl_h264_decode_params *dec_params = control[i].ptr;
+		printf("%s:%i num_slices %d flags %d\n", __func__, __LINE__, dec_params->num_slices, dec_params->flags);
+	}
+    }
     return ioctl(ctx->video_fd, VIDIOC_S_EXT_CTRLS, &controls);
 }
 

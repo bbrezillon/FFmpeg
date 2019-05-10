@@ -835,6 +835,7 @@ int ff_h264_decode_ref_pic_marking(H264SliceContext *sl, GetBitContext *gb,
     MMCO *mmco = sl->mmco;
     int nb_mmco = 0;
 
+    printf("%s:%i pos %d\n", __func__, __LINE__, gb->size_in_bits);
     if (nal->type == H264_NAL_IDR_SLICE) { // FIXME fields
         skip_bits1(gb); // broken_link
         if (get_bits1(gb)) {
@@ -843,8 +844,11 @@ int ff_h264_decode_ref_pic_marking(H264SliceContext *sl, GetBitContext *gb,
             nb_mmco          = 1;
         }
         sl->explicit_ref_marking = 1;
+        printf("%s:%i pos %d\n", __func__, __LINE__, gb->size_in_bits);
     } else {
+        printf("%s:%i pos %d\n", __func__, __LINE__, gb->size_in_bits);
         sl->explicit_ref_marking = get_bits1(gb);
+        printf("%s:%i pos %d\n", __func__, __LINE__, gb->size_in_bits);
         if (sl->explicit_ref_marking) {
             for (i = 0; i < MAX_MMCO_COUNT; i++) {
                 MMCOOpcode opcode = get_ue_golomb_31(gb);
@@ -880,8 +884,10 @@ int ff_h264_decode_ref_pic_marking(H264SliceContext *sl, GetBitContext *gb,
                     break;
             }
             nb_mmco = i;
+            printf("%s:%i pos %d\n", __func__, __LINE__, gb->size_in_bits);
         }
     }
+    printf("%s:%i pos %d\n", __func__, __LINE__, gb->size_in_bits);
 
     sl->nb_mmco = nb_mmco;
 
