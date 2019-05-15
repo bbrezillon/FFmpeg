@@ -19,6 +19,8 @@
 #ifndef AVCODEC_V4L2_REQUEST_H
 #define AVCODEC_V4L2_REQUEST_H
 
+#include <stdbool.h>
+
 #include "videodev2.h"
 
 #include "libavutil/hwcontext_drm.h"
@@ -55,6 +57,8 @@ int ff_v4l2_request_reset_frame(AVCodecContext *avctx, AVFrame *frame);
 int ff_v4l2_request_append_output_buffer(AVCodecContext *avctx, AVFrame *frame, const uint8_t *data, uint32_t size);
 
 int ff_v4l2_request_decode_frame(AVCodecContext *avctx, AVFrame *frame, struct v4l2_ext_control *control, int count);
+int ff_v4l2_request_decode_slice(AVCodecContext *avctx, AVFrame *frame, struct v4l2_ext_control *control, int count,
+				 bool is_first, bool is_last);
 
 int ff_v4l2_request_init(AVCodecContext *avctx, uint32_t pixelformat, uint32_t buffersize, struct v4l2_ext_control *control, int count);
 

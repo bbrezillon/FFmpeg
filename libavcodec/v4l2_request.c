@@ -17,6 +17,7 @@
  */
 
 #include <drm_fourcc.h>
+#include <stdbool.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/types.h>
@@ -70,7 +71,8 @@ static int v4l2_request_set_controls(V4L2RequestContext *ctx, int request_fd, st
     return ioctl(ctx->video_fd, VIDIOC_S_EXT_CTRLS, &controls);
 }
 
-static int v4l2_request_queue_buffer(V4L2RequestContext *ctx, int request_fd, V4L2RequestBuffer *buf)
+static int v4l2_request_queue_buffer(V4L2RequestContext *ctx, int request_fd, V4L2RequestBuffer *buf,
+				     uint32_t flags)
 {
     struct v4l2_plane planes[1] = {};
     struct v4l2_buffer buffer = {
@@ -80,7 +82,8 @@ static int v4l2_request_queue_buffer(V4L2RequestContext *ctx, int request_fd, V4
         .timestamp.tv_usec = buf->index,
         .bytesused = buf->used,
         .request_fd = request_fd,
-        .flags = (request_fd >= 0) ? V4L2_BUF_FLAG_REQUEST_FD : 0,
+        .flags = ((request_fd >= 0) ? V4L2_BUF_FLAG_REQUEST_FD : 0) |
+		 flags,
     };
 
     if (V4L2_TYPE_IS_MULTIPLANAR(buf->buffer.type)) {
@@ -178,13 +181,13 @@ int ff_v4l2_request_decode_frame(AVCodecContext *avctx, AVFrame *frame, struct v
         return -1;
     }
 
-    ret = v4l2_request_queue_buffer(ctx, req->request_fd, &req->output);
+    ret = v4l2_request_queue_buffer(ctx, req->request_fd, &req->output, 0);
     if (ret < 0) {
         av_log(avctx, AV_LOG_ERROR, "%s: queue output buffer %d failed for request %d, %s (%d)\n", __func__, req->output.index, req->request_fd, strerror(errno), errno);
         return -1;
     }
 
-    ret = v4l2_request_queue_buffer(ctx, -1, &req->capture);
+    ret = v4l2_request_queue_buffer(ctx, -1, &req->capture, 0);
     if (ret < 0) {
         av_log(avctx, AV_LOG_ERROR, "%s: queue capture buffer %d failed for request %d, %s (%d)\n", __func__, req->capture.index, req->request_fd, strerror(errno), errno);
         return -1;
@@ -233,6 +236,99 @@ int ff_v4l2_request_decode_frame(AVCodecContext *avctx, AVFrame *frame, struct v
     }
 
     return v4l2_request_set_drm_descriptor(req, &ctx->format);
+
+fail:
+    ret = v4l2_request_dequeue_buffer(ctx, &req->output);
+    if (ret < 0)
+        av_log(avctx, AV_LOG_ERROR, "%s: dequeue output buffer %d failed for request %d, %s (%d)\n", __func__, req->output.index, req->request_fd, strerror(errno), errno);
+
+    ret = v4l2_request_dequeue_buffer(ctx, &req->capture);
+    if (ret < 0)
+        av_log(avctx, AV_LOG_ERROR, "%s: dequeue capture buffer %d failed for request %d, %s (%d)\n", __func__, req->capture.index, req->request_fd, strerror(errno), errno);
+
+    ret = ioctl(req->request_fd, MEDIA_REQUEST_IOC_REINIT, NULL);
+    if (ret < 0)
+        av_log(avctx, AV_LOG_ERROR, "%s: reinit request %d failed, %s (%d)\n", __func__, req->request_fd, strerror(errno), errno);
+
+    return -1;
+}
+
+int ff_v4l2_request_decode_slice(AVCodecContext *avctx, AVFrame *frame, struct v4l2_ext_control *control, int count,
+				 bool is_first, bool is_last)
+{
+    V4L2RequestContext *ctx = avctx->internal->hwaccel_priv_data;
+    V4L2RequestDescriptor *req = (V4L2RequestDescriptor*)frame->data[0];
+    struct timeval tv = { 0, 500000 };
+    fd_set except_fds;
+    int ret;
+
+    av_log(avctx, AV_LOG_DEBUG, "%s: avctx=%p used=%u controls=%d index=%d fd=%d request_fd=%d\n", __func__, avctx, req->output.used, count, req->capture.index, req->capture.fd, req->request_fd);
+
+    ret = v4l2_request_set_controls(ctx, req->request_fd, control, count);
+    if (ret < 0) {
+        av_log(avctx, AV_LOG_ERROR, "%s: set controls failed for request %d, %s (%d)\n", __func__, req->request_fd, strerror(errno), errno);
+        return -1;
+    }
+
+    ret = v4l2_request_queue_buffer(ctx, req->request_fd, &req->output, is_last ? 0 : V4L2_BUF_FLAG_M2M_HOLD_CAPTURE_BUF);
+    if (ret < 0) {
+        av_log(avctx, AV_LOG_ERROR, "%s: queue output buffer %d failed for request %d, %s (%d)\n", __func__, req->output.index, req->request_fd, strerror(errno), errno);
+        return -1;
+    }
+
+    if (is_first) {
+        ret = v4l2_request_queue_buffer(ctx, -1, &req->capture, 0);
+        if (ret < 0) {
+            av_log(avctx, AV_LOG_ERROR, "%s: queue capture buffer %d failed for request %d, %s (%d)\n", __func__, req->capture.index, req->request_fd, strerror(errno), errno);
+            return -1;
+        }
+    }
+
+    // NOTE: do we need to dequeue when request fails/timeout?
+
+    // 4. queue request and wait
+    ret = ioctl(req->request_fd, MEDIA_REQUEST_IOC_QUEUE, NULL);
+    if (ret < 0) {
+        av_log(avctx, AV_LOG_ERROR, "%s: queue request %d failed, %s (%d)\n", __func__, req->request_fd, strerror(errno), errno);
+        goto fail;
+    }
+
+    FD_ZERO(&except_fds);
+    FD_SET(req->request_fd, &except_fds);
+
+    ret = select(req->request_fd + 1, NULL, NULL, &except_fds, &tv);
+    if (ret == 0) {
+        av_log(avctx, AV_LOG_ERROR, "%s: request %d timeout\n", __func__, req->request_fd);
+        goto fail;
+    } else if (ret < 0) {
+        av_log(avctx, AV_LOG_ERROR, "%s: select request %d failed, %s (%d)\n", __func__, req->request_fd, strerror(errno), errno);
+        goto fail;
+    }
+
+    ret = v4l2_request_dequeue_buffer(ctx, &req->output);
+    if (ret < 0) {
+        av_log(avctx, AV_LOG_ERROR, "%s: dequeue output buffer %d failed for request %d, %s (%d)\n", __func__, req->output.index, req->request_fd, strerror(errno), errno);
+        return -1;
+    }
+
+    if (is_last) {
+        ret = v4l2_request_dequeue_buffer(ctx, &req->capture);
+        if (ret < 0) {
+            av_log(avctx, AV_LOG_ERROR, "%s: dequeue capture buffer %d failed for request %d, %s (%d)\n", __func__, req->capture.index, req->request_fd, strerror(errno), errno);
+            return -1;
+        }
+    }
+
+    // TODO: check errors
+    // buffer.flags & V4L2_BUF_FLAG_ERROR
+
+    ret = ioctl(req->request_fd, MEDIA_REQUEST_IOC_REINIT, NULL);
+    if (ret < 0) {
+        av_log(avctx, AV_LOG_ERROR, "%s: reinit request %d failed, %s (%d)\n", __func__, req->request_fd, strerror(errno), errno);
+        return -1;
+    }
+
+    return is_last ? v4l2_request_set_drm_descriptor(req, &ctx->format) : 0;
 
 fail:
     ret = v4l2_request_dequeue_buffer(ctx, &req->output);
