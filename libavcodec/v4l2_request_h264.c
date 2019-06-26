@@ -26,7 +26,7 @@ typedef struct V4L2RequestControlsH264 {
     struct v4l2_ctrl_h264_pps pps;
     struct v4l2_ctrl_h264_scaling_matrix scaling_matrix;
     struct v4l2_ctrl_h264_decode_params decode_params;
-    struct v4l2_ctrl_h264_slice_params slice_params;
+    struct v4l2_ctrl_h264_slice_params slice_params[V4L2_H264_MAX_SLICES_PER_FRAME];
     unsigned int num_decoded_slices;
     unsigned int num_queued_slices;
 } V4L2RequestControlsH264;
@@ -208,7 +208,6 @@ static int v4l2_request_h264_start_frame(AVCodecContext *avctx,
     fill_dpb(&controls->decode_params, h);
     controls->num_decoded_slices = 0;
     controls->num_queued_slices = 0;
-    controls->decode_params.num_slices = 1;
 
     return ff_v4l2_request_reset_frame(avctx, h->cur_pic_ptr->f);
 }
@@ -239,7 +238,7 @@ static int v4l2_request_h264_decode_pending_slice(AVCodecContext *avctx, bool is
         {
             .id = V4L2_CID_MPEG_VIDEO_H264_SLICE_PARAMS,
             .ptr = &controls->slice_params,
-            .size = sizeof(controls->slice_params),
+            .size = sizeof(controls->slice_params) * controls->decode_params.num_slices,
         },
         {
             .id = V4L2_CID_MPEG_VIDEO_H264_DECODE_PARAMS,
@@ -282,17 +281,18 @@ static int v4l2_request_h264_decode_slice(AVCodecContext *avctx, const uint8_t *
     const H264SliceContext *sl = &h->slice_ctx[0];
     V4L2RequestControlsH264 *controls = h->cur_pic_ptr->hwaccel_picture_private;
     V4L2RequestDescriptor *req = (V4L2RequestDescriptor*)h->cur_pic_ptr->f->data[0];
-    int i, ret, count;
+    int i, ret, count, slice = controls->decode_params.num_slices;
 
     assert(controls->num_queued_slices >= controls->num_decoded_slices);
-    ret = v4l2_request_h264_decode_pending_slice(avctx, false);
-    if (ret)
-        return ret;
+//    ret = v4l2_request_h264_decode_pending_slice(avctx, false);
+//    if (ret)
+//        return ret;
     assert(controls->num_queued_slices == controls->num_decoded_slices);
 
-    controls->slice_params = (struct v4l2_ctrl_h264_slice_params) {
+    controls->slice_params[slice] = (struct v4l2_ctrl_h264_slice_params) {
         /* Size in bytes, including header */
         .size = 0,
+	.start_byte_offset = req->output.used,
         /* Offset in bits to slice_data() from the beginning of this slice. */
         .header_bit_size = get_bits_count(&sl->gb),
 
@@ -326,26 +326,26 @@ static int v4l2_request_h264_decode_slice(AVCodecContext *avctx, const uint8_t *
     };
 
     if (FIELD_PICTURE(h))
-        controls->slice_params.flags |= V4L2_H264_SLICE_FLAG_FIELD_PIC;
+        controls->slice_params[slice].flags |= V4L2_H264_SLICE_FLAG_FIELD_PIC;
     if (h->picture_structure == PICT_BOTTOM_FIELD)
-        controls->slice_params.flags |= V4L2_H264_SLICE_FLAG_BOTTOM_FIELD;
+        controls->slice_params[slice].flags |= V4L2_H264_SLICE_FLAG_BOTTOM_FIELD;
     if (sl->slice_type == AV_PICTURE_TYPE_B && sl->direct_spatial_mv_pred)
-        controls->slice_params.flags |= V4L2_H264_SLICE_FLAG_DIRECT_SPATIAL_MV_PRED;
+        controls->slice_params[slice].flags |= V4L2_H264_SLICE_FLAG_DIRECT_SPATIAL_MV_PRED;
 
-    controls->slice_params.pred_weight_table.chroma_log2_weight_denom = sl->pwt.chroma_log2_weight_denom;
-    controls->slice_params.pred_weight_table.luma_log2_weight_denom = sl->pwt.luma_log2_weight_denom;
+    controls->slice_params[slice].pred_weight_table.chroma_log2_weight_denom = sl->pwt.chroma_log2_weight_denom;
+    controls->slice_params[slice].pred_weight_table.luma_log2_weight_denom = sl->pwt.luma_log2_weight_denom;
 
     count = sl->list_count > 0 ? sl->ref_count[0] : 0;
     for (i = 0; i < count; i++)
-        controls->slice_params.ref_pic_list0[i] = get_dpb_index(&controls->decode_params, &sl->ref_list[0][i]);
+        controls->slice_params[slice].ref_pic_list0[i] = get_dpb_index(&controls->decode_params, &sl->ref_list[0][i]);
     if (count)
-        fill_weight_factors(&controls->slice_params.pred_weight_table.weight_factors[0], 0, sl);
+        fill_weight_factors(&controls->slice_params[slice].pred_weight_table.weight_factors[0], 0, sl);
 
     count = sl->list_count > 1 ? sl->ref_count[1] : 0;
     for (i = 0; i < count; i++)
-        controls->slice_params.ref_pic_list1[i] = get_dpb_index(&controls->decode_params, &sl->ref_list[1][i]);
+        controls->slice_params[slice].ref_pic_list1[i] = get_dpb_index(&controls->decode_params, &sl->ref_list[1][i]);
     if (count)
-        fill_weight_factors(&controls->slice_params.pred_weight_table.weight_factors[1], 1, sl);
+        fill_weight_factors(&controls->slice_params[slice].pred_weight_table.weight_factors[1], 1, sl);
 
     /* FIXME: should be done driver side? */
     ret = ff_v4l2_request_append_output_buffer(avctx, h->cur_pic_ptr->f, nalu_slice_start_code, 3);
@@ -357,14 +357,17 @@ static int v4l2_request_h264_decode_slice(AVCodecContext *avctx, const uint8_t *
 	    return ret;
 
     /* FIXME: should be done driver side! */
+    /*
     if ((size + 3) % 16) {
         ret = ff_v4l2_request_append_output_buffer(avctx, h->cur_pic_ptr->f, padding, 16 - ((size + 3) % 16));
         if (ret)
             return ret;
     }
+    */
 
-    controls->slice_params.size = req->output.used;
+    controls->slice_params[slice].size = req->output.used;
     controls->num_queued_slices++;
+    controls->decode_params.num_slices++;
     return 0;
 }
 
@@ -385,6 +388,16 @@ static int v4l2_request_h264_init(AVCodecContext *avctx)
             .ptr = &pps,
             .size = sizeof(pps),
         },
+	{
+            .id = V4L2_CID_MPEG_VIDEO_H264_DECODING_MODE,
+	    .value = V4L2_MPEG_VIDEO_H264_DECODING_PER_FRAME,
+	},
+	/*
+	{
+            .id = V4L2_CID_MPEG_VIDEO_H264_NAL_HEADER,
+	    .value = V4L2_MPEG_VIDEO_H264_NAL_HEADER_ANNEXB,
+	},
+	*/
     };
 
     fill_sps(&sps, h);
