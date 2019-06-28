@@ -63,7 +63,7 @@ static int v4l2_request_vp8_decode_slice(AVCodecContext *avctx,
     const uint8_t *data = buffer + header_size;
     unsigned int i, j, k;
 
-    hdr->key_frame = !s->keyframe;
+    hdr->flags |= s->keyframe ? V4L2_VP8_FRAME_HDR_FLAG_KEY_FRAME : 0;
     hdr->version = s->profile & 0x3;
     hdr->width = avctx->width;
     hdr->height = avctx->height;
@@ -75,16 +75,15 @@ static int v4l2_request_vp8_decode_slice(AVCodecContext *avctx,
     hdr->prob_gf = s->prob->golden;
     hdr->prob_last = s->prob->last;
     hdr->first_part_size = s->header_partition_size;
-    hdr->first_part_offset = header_size;
     hdr->macroblock_bit_offset = (8 * (s->coder_state_at_header_end.input - data) -
                                   s->coder_state_at_header_end.bit_count - 8);
     hdr->num_dct_parts = s->num_coeff_partitions;
     for (i = 0; i < 8; i++)
 	    hdr->dct_part_sizes[i] = s->coeff_partition_size[i];
 
-    hdr->bool_dec_range = s->coder_state_at_header_end.range;
-    hdr->bool_dec_value = s->coder_state_at_header_end.value;
-    hdr->bool_dec_count = s->coder_state_at_header_end.bit_count;
+    hdr->coder_state.range = s->coder_state_at_header_end.range;
+    hdr->coder_state.value = s->coder_state_at_header_end.value;
+    hdr->coder_state.bit_count = s->coder_state_at_header_end.bit_count;
     if (s->framep[VP56_FRAME_PREVIOUS])
         hdr->last_frame_ts = ff_v4l2_request_get_capture_timestamp(s->framep[VP56_FRAME_PREVIOUS]->tf.f);
     if (s->framep[VP56_FRAME_GOLDEN])
