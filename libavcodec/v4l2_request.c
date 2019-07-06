@@ -117,9 +117,13 @@ static int v4l2_request_dequeue_buffer(V4L2RequestContext *ctx, V4L2RequestBuffe
         buffer.m.planes = planes;
     }
 
+again:
     ret = ioctl(ctx->video_fd, VIDIOC_DQBUF, &buffer);
-    if (ret < 0)
+    if (ret < 0) {
+        if (errno == EAGAIN)
+            goto again;
         return ret;
+    }
 
     buf->buffer.timestamp = buffer.timestamp;
     return 0;
