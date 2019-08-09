@@ -26,6 +26,8 @@
 #include "libavutil/hwcontext_drm.h"
 
 typedef struct V4L2RequestContext {
+    char devname[PATH_MAX];
+    char nodename[PATH_MAX];
     int video_fd;
     int media_fd;
     enum v4l2_buf_type output_type;

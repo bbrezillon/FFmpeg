@@ -28,6 +28,8 @@
 #include "decode.h"
 #include "internal.h"
 #include "v4l2_request.h"
+#include "v4l2_m2m.h"
+#include "v4l2_fmt.h"
 #include "media.h"
 #include "videodev2.h"
 #include "h264-ctrls.h"
@@ -384,63 +386,169 @@ static int v4l2_request_select_capture_format(AVCodecContext *avctx)
     return v4l2_request_set_format(avctx, ctx->format.type, V4L2_PIX_FMT_NV12, 0);
 }
 
+static int v4l2_request_get_caps(AVCodecContext *avctx, V4L2RequestContext *ctx)
+{
+    struct v4l2_capability cap;
+    int ret;
+
+    memset(&cap, 0, sizeof(cap));
+    ret = ioctl(ctx->video_fd, VIDIOC_QUERYCAP, &cap);
+    if (ret < 0)
+        return ret;
+
+    av_log(avctx, AV_LOG_DEBUG, "driver '%s' on card '%s'\n", cap.driver, cap.card);
+
+    if (ff_v4l2_mplane_video(&cap)) {
+        ctx->format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+        ctx->output_type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+        return 0;
+    }
+
+    if (ff_v4l2_splane_video(&cap)) {
+        ctx->format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        ctx->output_type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+        return 0;
+    }
+
+    av_log(avctx, AV_LOG_DEBUG, "%s: missing required mem2mem capability\n", __func__);
+    return AVERROR(EINVAL);
+}
+
+static int v4l2_get_coded_format(AVCodecContext *avctx, V4L2RequestContext *ctx, uint32_t pixelformat)
+{
+    struct v4l2_fmtdesc fdesc;
+    int ret;
+
+    /* check if the driver supports this format */
+    memset(&fdesc, 0, sizeof(fdesc));
+    fdesc.type = ctx->output_type;
+
+    for (;;) {
+        ret = ioctl(ctx->video_fd, VIDIOC_ENUM_FMT, &fdesc);
+        if (ret)
+            return AVERROR(EINVAL);
+
+        if (fdesc.pixelformat == pixelformat)
+            break;
+        fdesc.index++;
+    }
+    return 0;
+}
+
+static int v4l2_probe_driver(AVCodecContext *avctx, V4L2RequestContext *ctx, uint32_t pixelformat)
+{
+    int ret;
+
+    ctx->video_fd = open(ctx->devname, O_RDWR | O_NONBLOCK, 0);
+    if (ctx->video_fd < 0)
+        return AVERROR(errno);
+
+    ret = v4l2_request_get_caps(avctx, ctx);
+    if (ret < 0)
+        return ret;
+
+    ret = v4l2_get_coded_format(avctx, ctx, pixelformat);
+    if (ret) {
+        av_log(avctx, AV_LOG_DEBUG, "v4l2 capture format not supported\n");
+        goto fail;
+    }
+    return 0;
+
+fail:
+    if (close(ctx->video_fd) < 0) {
+        ret = AVERROR(errno);
+        av_log(avctx, AV_LOG_ERROR, "failure closing %s (%s)\n", ctx->devname, av_err2str(AVERROR(errno)));
+    }
+    ctx->video_fd = -1;
+
+    return ret;
+}
+
+static int v4l2_request_find_device(AVCodecContext *avctx, V4L2RequestContext *ctx, uint32_t pixelformat)
+{
+    int ret = AVERROR(EINVAL);
+    struct dirent *entry;
+    char video_node[PATH_MAX];
+    char media_node[PATH_MAX];
+    char sysfs_path[PATH_MAX];
+    DIR *dirp;
+    struct media_device_info device_info = {0};
+
+    dirp = opendir("/dev");
+    if (!dirp)
+        return AVERROR(errno);
+
+    for (entry = readdir(dirp); entry; entry = readdir(dirp)) {
+
+        if (strncmp(entry->d_name, "video", 5))
+            continue;
+
+        snprintf(video_node, sizeof(video_node), "/dev/%s", entry->d_name);
+        av_log(avctx, AV_LOG_DEBUG, "probing device %s\n", video_node);
+        strncpy(ctx->devname, video_node, strlen(video_node) + 1);
+        strncpy(ctx->nodename, entry->d_name, strlen(entry->d_name) + 1);
+        ret = v4l2_probe_driver(avctx, ctx, pixelformat);
+        if (!ret)
+                break;
+    }
+
+    closedir(dirp);
+
+    if (ret) {
+        av_log(avctx, AV_LOG_ERROR, "Could not find a valid video device\n");
+        return ret;
+    }
+
+    snprintf(sysfs_path, sizeof(sysfs_path), "/sys/class/video4linux/%s/device", ctx->nodename);
+    dirp = opendir(sysfs_path);
+    if (!dirp)
+        return AVERROR(errno);
+
+    ret = AVERROR(EINVAL);
+    for (entry = readdir(dirp); entry; entry = readdir(dirp)) {
+
+        if (strncmp(entry->d_name, "media", 5))
+            continue;
+
+        snprintf(media_node, sizeof(media_node), "/dev/%s", entry->d_name);
+        av_log(avctx, AV_LOG_DEBUG, "probing device %s\n", media_node);
+        ctx->media_fd = open(media_node, O_RDWR | O_NONBLOCK, 0);
+        if (ctx->media_fd < 0) {
+            av_log(avctx, AV_LOG_ERROR, "%s: opening %s failed, %s (%d)\n", __func__, V4L2_REQUEST_MEDIA_PATH, strerror(errno), errno);
+            ret = AVERROR(EINVAL);
+            break;
+        }
+
+        ret = ioctl(ctx->media_fd, MEDIA_IOC_DEVICE_INFO, &device_info);
+        if (ret < 0) {
+            av_log(avctx, AV_LOG_ERROR, "%s: get media device info failed, %s (%d)\n", __func__, strerror(errno), errno);
+	    break;
+        }
+
+        av_log(avctx, AV_LOG_DEBUG, "%s: avctx=%p ctx=%p driver=%s\n", __func__, avctx, ctx, device_info.driver);
+    }
+
+    closedir(dirp);
+
+    if (ret) {
+        av_log(avctx, AV_LOG_ERROR, "Could not find a valid media device\n");
+        return ret;
+    }
+
+    av_log(avctx, AV_LOG_INFO, "Using device %s\n", video_node);
+    return ret;
+}
+
 int ff_v4l2_request_init(AVCodecContext *avctx, uint32_t pixelformat, uint32_t buffersize, struct v4l2_ext_control *control, int count)
 {
     V4L2RequestContext *ctx = avctx->internal->hwaccel_priv_data;
     int ret;
-    struct media_device_info device_info = {0};
-    struct v4l2_capability capability = {0};
-    unsigned int capabilities = 0;
-    const char *video_path = getenv("FFMPEG_V4L2_REQUEST_VIDEO_PATH");
-    const char *media_path = getenv("FFMPEG_V4L2_REQUEST_MEDIA_PATH");
-
-    if (!video_path)
-	    video_path = V4L2_REQUEST_VIDEO_PATH;
-    if (!media_path)
-	    media_path = V4L2_REQUEST_MEDIA_PATH;
 
     av_log(avctx, AV_LOG_DEBUG, "%s: avctx=%p ctx=%p hw_device_ctx=%p hw_frames_ctx=%p\n", __func__, avctx, ctx, avctx->hw_device_ctx, avctx->hw_frames_ctx);
 
-    ctx->video_fd = open(video_path, O_RDWR | O_NONBLOCK, 0);
-    if (ctx->video_fd < 0) {
-        av_log(avctx, AV_LOG_ERROR, "%s: opening %s failed, %s (%d)\n", __func__, V4L2_REQUEST_VIDEO_PATH, strerror(errno), errno);
-        ret = AVERROR(EINVAL);
+    ret = v4l2_request_find_device(avctx, ctx, pixelformat);
+    if (ret < 0)
         goto fail;
-    }
-
-    ctx->media_fd = open(media_path, O_RDWR | O_NONBLOCK, 0);
-    if (ctx->media_fd < 0) {
-        av_log(avctx, AV_LOG_ERROR, "%s: opening %s failed, %s (%d)\n", __func__, V4L2_REQUEST_MEDIA_PATH, strerror(errno), errno);
-        ret = AVERROR(EINVAL);
-        goto fail;
-    }
-
-    ret = ioctl(ctx->media_fd, MEDIA_IOC_DEVICE_INFO, &device_info);
-    if (ret < 0) {
-        av_log(avctx, AV_LOG_ERROR, "%s: get media device info failed, %s (%d)\n", __func__, strerror(errno), errno);
-        ret = AVERROR(EINVAL);
-        goto fail;
-    }
-
-    av_log(avctx, AV_LOG_DEBUG, "%s: avctx=%p ctx=%p driver=%s\n", __func__, avctx, ctx, device_info.driver);
-
-    ret = ioctl(ctx->video_fd, VIDIOC_QUERYCAP, &capability);
-    if (ret < 0) {
-        av_log(avctx, AV_LOG_ERROR, "%s: get video capability failed, %s (%d)\n", __func__, strerror(errno), errno);
-        ret = AVERROR(EINVAL);
-        goto fail;
-    }
-
-    if (capability.capabilities & V4L2_CAP_DEVICE_CAPS)
-        capabilities = capability.device_caps;
-    else
-        capabilities = capability.capabilities;
-
-    if ((capabilities & V4L2_CAP_STREAMING) != V4L2_CAP_STREAMING) {
-        av_log(avctx, AV_LOG_ERROR, "%s: missing required streaming capability\n", __func__);
-        ret = AVERROR(EINVAL);
-        goto fail;
-    }
 
     if (pixelformat == V4L2_PIX_FMT_H264_SLICE) {
         ret = v4l2_query_h264_start_code(avctx);
@@ -449,18 +557,6 @@ int ff_v4l2_request_init(AVCodecContext *avctx, uint32_t pixelformat, uint32_t b
             ret = AVERROR(EINVAL);
             goto fail;
 	}
-    }
-
-    if ((capabilities & V4L2_CAP_VIDEO_M2M_MPLANE) == V4L2_CAP_VIDEO_M2M_MPLANE) {
-        ctx->output_type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
-        ctx->format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-    } else if ((capabilities & V4L2_CAP_VIDEO_M2M) == V4L2_CAP_VIDEO_M2M) {
-        ctx->output_type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
-        ctx->format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    } else {
-        av_log(avctx, AV_LOG_ERROR, "%s: missing required mem2mem capability\n", __func__);
-        ret = AVERROR(EINVAL);
-        goto fail;
     }
 
     ret = v4l2_request_set_format(avctx, ctx->output_type, pixelformat, buffersize);

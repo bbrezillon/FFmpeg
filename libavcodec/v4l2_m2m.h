@@ -72,6 +72,9 @@ typedef struct V4L2m2mPriv
     int num_capture_buffers;
 } V4L2m2mPriv;
 
+int ff_v4l2_mplane_video(struct v4l2_capability *cap);
+int ff_v4l2_splane_video(struct v4l2_capability *cap);
+
 /**
  * Allocate a new context and references for a V4L2 M2M instance.
  *

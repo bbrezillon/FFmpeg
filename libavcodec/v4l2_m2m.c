@@ -36,7 +36,7 @@
 #include "v4l2_fmt.h"
 #include "v4l2_m2m.h"
 
-static inline int v4l2_splane_video(struct v4l2_capability *cap)
+int ff_v4l2_splane_video(struct v4l2_capability *cap)
 {
     if (cap->capabilities & (V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_VIDEO_OUTPUT) &&
         cap->capabilities & V4L2_CAP_STREAMING)
@@ -48,7 +48,7 @@ static inline int v4l2_splane_video(struct v4l2_capability *cap)
     return 0;
 }
 
-static inline int v4l2_mplane_video(struct v4l2_capability *cap)
+int ff_v4l2_mplane_video(struct v4l2_capability *cap)
 {
     if (cap->capabilities & (V4L2_CAP_VIDEO_CAPTURE_MPLANE | V4L2_CAP_VIDEO_OUTPUT_MPLANE) &&
         cap->capabilities & V4L2_CAP_STREAMING)
@@ -78,13 +78,13 @@ static int v4l2_prepare_contexts(V4L2m2mContext* s)
 
     av_log(s->avctx, AV_LOG_INFO, "driver '%s' on card '%s'\n", cap.driver, cap.card);
 
-    if (v4l2_mplane_video(&cap)) {
+    if (ff_v4l2_mplane_video(&cap)) {
         s->capture.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
         s->output.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
         return 0;
     }
 
-    if (v4l2_splane_video(&cap)) {
+    if (ff_v4l2_splane_video(&cap)) {
         s->capture.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
         s->output.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
         return 0;
