@@ -173,7 +173,8 @@ static int update_size(AVCodecContext *avctx, int w, int h)
 #define HWACCEL_MAX (CONFIG_VP9_DXVA2_HWACCEL + \
                      CONFIG_VP9_D3D11VA_HWACCEL * 2 + \
                      CONFIG_VP9_NVDEC_HWACCEL + \
-                     CONFIG_VP9_VAAPI_HWACCEL)
+                     CONFIG_VP9_VAAPI_HWACCEL + \
+		     CONFIG_VP9_V4L2REQUEST_HWACCEL)
     enum AVPixelFormat pix_fmts[HWACCEL_MAX + 2], *fmtp = pix_fmts;
     VP9Context *s = avctx->priv_data;
     uint8_t *p;
@@ -202,6 +203,9 @@ static int update_size(AVCodecContext *avctx, int w, int h)
 #if CONFIG_VP9_VAAPI_HWACCEL
             *fmtp++ = AV_PIX_FMT_VAAPI;
 #endif
+#if CONFIG_VP9_V4L2REQUEST_HWACCEL
+            *fmtp++ = AV_PIX_FMT_DRM_PRIME;
+#endif
             break;
         case AV_PIX_FMT_YUV420P12:
 #if CONFIG_VP9_NVDEC_HWACCEL
@@ -209,6 +213,9 @@ static int update_size(AVCodecContext *avctx, int w, int h)
 #endif
 #if CONFIG_VP9_VAAPI_HWACCEL
             *fmtp++ = AV_PIX_FMT_VAAPI;
+#endif
+#if CONFIG_VP9_V4L2REQUEST_HWACCEL
+            *fmtp++ = AV_PIX_FMT_DRM_PRIME;
 #endif
             break;
         }
@@ -672,7 +679,8 @@ static int decode_frame_header(AVCodecContext *avctx,
                                          get_bits(&s->gb, 8) : 255;
         }
 
-        if (get_bits1(&s->gb)) {
+        s->s.h.segmentation.update_data = get_bits1(&s->gb);
+        if (s->s.h.segmentation.update_data) {
             s->s.h.segmentation.absolute_vals = get_bits1(&s->gb);
             for (i = 0; i < 8; i++) {
                 if ((s->s.h.segmentation.feat[i].q_enabled = get_bits1(&s->gb)))
@@ -1472,6 +1480,7 @@ static int vp9_decode_frame(AVCodecContext *avctx, void *frame,
                             (!s->s.h.segmentation.enabled || !s->s.h.segmentation.update_map);
     AVFrame *f;
 
+    printf("%s:%i pkt size %d\n", __func__, __LINE__, pkt->size);
     if ((ret = decode_frame_header(avctx, data, size, &ref)) < 0) {
         return ret;
     } else if (ret == 0) {
@@ -1544,6 +1553,7 @@ FF_ENABLE_DEPRECATION_WARNINGS
         ret = avctx->hwaccel->start_frame(avctx, NULL, 0);
         if (ret < 0)
             return ret;
+        printf("%s:%i pkt size %d\n", __func__, __LINE__, pkt->size);
         ret = avctx->hwaccel->decode_slice(avctx, pkt->data, pkt->size);
         if (ret < 0)
             return ret;
@@ -1813,6 +1823,9 @@ AVCodec ff_vp9_decoder = {
 #endif
 #if CONFIG_VP9_VAAPI_HWACCEL
                                HWACCEL_VAAPI(vp9),
+#endif
+#if CONFIG_VP9_V4L2REQUEST_HWACCEL
+                               HWACCEL_V4L2REQUEST(vp9),
 #endif
                                NULL
                            },
