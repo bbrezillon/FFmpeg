@@ -1480,7 +1480,7 @@ static int vp9_decode_frame(AVCodecContext *avctx, void *frame,
                             (!s->s.h.segmentation.enabled || !s->s.h.segmentation.update_map);
     AVFrame *f;
 
-    printf("%s:%i pkt size %d\n", __func__, __LINE__, pkt->size);
+//    printf("%s:%i pkt size %d\n", __func__, __LINE__, pkt->size);
     if ((ret = decode_frame_header(avctx, data, size, &ref)) < 0) {
         return ret;
     } else if (ret == 0) {
@@ -1553,7 +1553,7 @@ FF_ENABLE_DEPRECATION_WARNINGS
         ret = avctx->hwaccel->start_frame(avctx, NULL, 0);
         if (ret < 0)
             return ret;
-        printf("%s:%i pkt size %d\n", __func__, __LINE__, pkt->size);
+//        printf("%s:%i pkt size %d\n", __func__, __LINE__, pkt->size);
         ret = avctx->hwaccel->decode_slice(avctx, pkt->data, pkt->size);
         if (ret < 0)
             return ret;

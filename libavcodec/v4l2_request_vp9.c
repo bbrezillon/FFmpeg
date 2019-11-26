@@ -59,12 +59,12 @@ static int v4l2_request_vp9_set_frame_ctx(AVCodecContext *avctx, unsigned int id
     };
     int ret;
 
-    printf("%s:%i id %d\n", __func__, __LINE__, id);
+//    printf("%s:%i id %d\n", __func__, __LINE__, id);
 
     memcpy(fctx.probs.tx_probs_8x8, s->prob_ctx[id].p.tx8p, sizeof(s->prob_ctx[id].p.tx8p));
     memcpy(fctx.probs.tx_probs_16x16, s->prob_ctx[id].p.tx16p, sizeof(s->prob_ctx[id].p.tx16p));
     memcpy(fctx.probs.tx_probs_32x32, s->prob_ctx[id].p.tx32p, sizeof(s->prob_ctx[id].p.tx32p));
-    printf("%s:%i tx32_probs[0][0] %02x\n", __func__, __LINE__, fctx.probs.tx_probs_32x32[0][0]);
+//    printf("%s:%i tx32_probs[0][0] %02x\n", __func__, __LINE__, fctx.probs.tx_probs_32x32[0][0]);
     memcpy(fctx.probs.coef_probs, s->prob_ctx[id].coef, sizeof(s->prob_ctx[id].coef));
     /*
     memset(fctx.probs.coef_probs, 0, sizeof(fctx.probs.coef_probs));
@@ -85,14 +85,14 @@ static int v4l2_request_vp9_set_frame_ctx(AVCodecContext *avctx, unsigned int id
     memcpy(fctx.probs.single_ref_prob, s->prob_ctx[id].p.single_ref, sizeof(s->prob_ctx[id].p.single_ref));
     memcpy(fctx.probs.comp_ref_prob, s->prob_ctx[id].p.comp_ref, sizeof(s->prob_ctx[id].p.comp_ref));
     memcpy(fctx.probs.y_mode_probs, s->prob_ctx[id].p.y_mode, sizeof(s->prob_ctx[id].p.y_mode));
-    printf("%s:%i y_mode_probs[0][0] %02x\n", __func__, __LINE__, fctx.probs.y_mode_probs[0][0]);
+//    printf("%s:%i y_mode_probs[0][0] %02x\n", __func__, __LINE__, fctx.probs.y_mode_probs[0][0]);
     for (unsigned i = 0; i < 10; i++)
         memcpy(fctx.probs.uv_mode_probs[ff_to_v4l2_intramode[i]],
                s->prob_ctx[id].p.uv_mode[i], sizeof(s->prob_ctx[id].p.uv_mode[0]));
         
     memcpy(fctx.probs.uv_mode_probs, s->prob_ctx[id].p.uv_mode, sizeof(s->prob_ctx[id].p.uv_mode));
     for (unsigned i = 0; i < 4; i++)
-        memcpy(fctx.probs.partition_probs[i], s->prob.p.partition[3-i],
+        memcpy(fctx.probs.partition_probs[i * 4], s->prob_ctx[id].p.partition[3-i],
 	       sizeof(s->prob.p.partition[0]));
     memcpy(fctx.probs.mv_joint_probs, s->prob_ctx[id].p.mv_joint, sizeof(s->prob_ctx[id].p.mv_joint));
     for (unsigned i = 0; i < 2; i++) {
@@ -153,7 +153,7 @@ static int v4l2_request_vp9_get_frame_ctx(AVCodecContext *avctx, unsigned int id
                fctx.probs.uv_mode_probs[ff_to_v4l2_intramode[i]],
                sizeof(s->prob_ctx[id].p.uv_mode[0]));
     for (unsigned i = 0; i < 4; i++)
-        memcpy(s->prob.p.partition[3-i], fctx.probs.partition_probs[i],
+        memcpy(s->prob_ctx[id].p.partition[3-i], fctx.probs.partition_probs[i * 4],
 	       sizeof(s->prob.p.partition[0]));
     memcpy(s->prob_ctx[id].p.mv_joint, fctx.probs.mv_joint_probs, sizeof(s->prob_ctx[id].p.mv_joint));
     for (unsigned i = 0; i < 2; i++) {
@@ -171,7 +171,7 @@ static int v4l2_request_vp9_get_frame_ctx(AVCodecContext *avctx, unsigned int id
 	 s->prob_ctx[id].p.mv_comp[i].hp = fctx.probs.mv_hp_prob[i];
     }
 
-    printf("%s:%i id %d\n", __func__, __LINE__, id);
+//    printf("%s:%i id %d\n", __func__, __LINE__, id);
     return 0;
 }
 
@@ -224,7 +224,7 @@ static int v4l2_request_vp9_end_frame(AVCodecContext *avctx)
     if (ret)
         return ret;
 
-    sleep(1);
+//    sleep(1);
     if (!s->s.h.refreshctx)
         return 0;
 
@@ -263,7 +263,7 @@ static int v4l2_request_vp9_decode_slice(AVCodecContext *avctx,
 
     dec_params->header_size_in_bytes = s->s.h.compressed_header_size;
     dec_params->profile = s->s.h.profile;
-    printf("%s:%i profile %d\n", __func__, __LINE__, dec_params->profile);
+//    printf("%s:%i profile %d\n", __func__, __LINE__, dec_params->profile);
     dec_params->reset_frame_context = s->s.h.resetctx;
     dec_params->frame_context_idx = s->s.h.framectxid;
     dec_params->bit_depth = s->s.h.bpp;
@@ -303,22 +303,21 @@ static int v4l2_request_vp9_decode_slice(AVCodecContext *avctx,
     dec_params->reference_mode = s->s.h.comppredmode;
     dec_params->frame_width_minus_1 = s->w - 1;
     dec_params->frame_height_minus_1 = s->h - 1;
-    printf("%s:%i W/H %d/%d\n", __func__, __LINE__, s->w, s->h);
+//    printf("%s:%i W/H %d/%d\n", __func__, __LINE__, s->w, s->h);
     /* render width/height are ignored for now. */
 
     for (unsigned i = 0; i < 3; i++) {
         const ThreadFrame *ref = &s->s.refs[s->s.h.refidx[i]];
-	const struct V4L2RequestDescriptor *req = ref->f ? ref->f->data[0] : NULL;
 
-	dec_params->refs[i] = req ? req->capture.index + 1 : 0;
-        printf("%s:%i refs[%d] %lld\n", __func__, __LINE__, i, dec_params->refs[i]);
+	dec_params->refs[i] = ff_v4l2_request_get_capture_timestamp(ref->f);
+  //      printf("%s:%i refs[%d] %lld\n", __func__, __LINE__, i, dec_params->refs[i]);
     }
 
     if (s->s.h.lf_delta.enabled)
         dec_params->lf.flags |= V4L2_VP9_LOOP_FILTER_FLAG_DELTA_ENABLED;
     if (s->s.h.lf_delta.updated)
         dec_params->lf.flags |= V4L2_VP9_LOOP_FILTER_FLAG_DELTA_UPDATE;
-    printf("%s:%i LF flags %x\n", __func__, __LINE__, dec_params->lf.flags);
+    //printf("%s:%i LF flags %x\n", __func__, __LINE__, dec_params->lf.flags);
 
     dec_params->lf.level = s->s.h.filter.level;
     dec_params->lf.sharpness = s->s.h.filter.sharpness;
@@ -351,7 +350,7 @@ static int v4l2_request_vp9_decode_slice(AVCodecContext *avctx,
     if (s->s.h.segmentation.absolute_vals)
         dec_params->seg.flags |= V4L2_VP9_SEGMENTATION_FLAG_ABS_OR_DELTA_UPDATE;
 
-    printf("%s:%i seg flags %x\n", __func__, __LINE__, dec_params->seg.flags);
+//    printf("%s:%i seg flags %x\n", __func__, __LINE__, dec_params->seg.flags);
     memcpy(dec_params->seg.tree_probs, s->s.h.segmentation.prob,
            sizeof(dec_params->seg.tree_probs));
     memcpy(dec_params->seg.pred_probs, s->s.h.segmentation.pred_prob,
@@ -378,34 +377,48 @@ static int v4l2_request_vp9_decode_slice(AVCodecContext *avctx,
     }
 
     memcpy(dec_params->probs.tx_probs_8x8, s->prob.p.tx8p, sizeof(s->prob.p.tx8p));
+//    for (unsigned i = 0; i < 2; i++)
+//       printf("txp8[%d][0] %02x\n", i, dec_params->probs.tx_probs_8x8[i][0]);
+
     memcpy(dec_params->probs.tx_probs_16x16, s->prob.p.tx16p, sizeof(s->prob.p.tx16p));
+//    for (unsigned i = 0; i < 2; i++)
+//       for (unsigned j = 0; j < 2; j++)
+//           printf("txp16[%d][%d] %02x\n", i, j, dec_params->probs.tx_probs_16x16[i][j]);
     memcpy(dec_params->probs.tx_probs_32x32, s->prob.p.tx32p, sizeof(s->prob.p.tx32p));
-    for (unsigned i = 0; i < 4; i++)
-        for (unsigned j = 0; j < 2; j++)
-            for (unsigned k = 0; k < 2; k++)
-                for (unsigned l = 0; l < 6; l++)
-                    for (unsigned m = 0; m < 6; m++)
+//    for (unsigned i = 0; i < 2; i++)
+//       for (unsigned j = 0; j < 3; j++)
+//           printf("txp32[%d][%d] %02x\n", i, j, dec_params->probs.tx_probs_32x32[i][j]);
+    for (unsigned i = 0; i < 4; i++) {
+        for (unsigned j = 0; j < 2; j++) {
+            for (unsigned k = 0; k < 2; k++) {
+                for (unsigned l = 0; l < 6; l++) {
+                    for (unsigned m = 0; m < 6; m++) {
                         memcpy(dec_params->probs.coef_probs[i][j][k][l][m],
                                s->prob.coef[i][j][k][l][m],
 			       sizeof(dec_params->probs.coef_probs[0][0][0][0][0]));
-//    memcpy(dec_params->probs.coef_probs, s->prob.coef, sizeof(dec_params->probs.coef_probs));
-    memset(dec_params->probs.coef_probs, 0, sizeof(dec_params->probs.coef_probs));
+//			for (unsigned n = 0; n < 3; n++)
+//                            printf("coef_probs[%d][%d][%d][%d][%d][%d] = %02x\n", i, j, k, l, m, n, dec_params->probs.coef_probs[i][j][k][l][m][n]);
+		    }
+                }
+            }
+        }
+    }
     memcpy(dec_params->probs.skip_prob, s->prob.p.skip, sizeof(s->prob.p.skip));
     memcpy(dec_params->probs.inter_mode_probs, s->prob.p.mv_mode, sizeof(s->prob.p.mv_mode));
     memcpy(dec_params->probs.interp_filter_probs, s->prob.p.filter, sizeof(s->prob.p.filter));
     memcpy(dec_params->probs.is_inter_prob, s->prob.p.intra, sizeof(s->prob.p.intra));
+//    for (unsigned i = 0; i < 4; i++)
+//        printf("is_inter_prob[%d] = %02x\n", i, dec_params->probs.is_inter_prob[i]);
     memcpy(dec_params->probs.comp_mode_prob, s->prob.p.comp, sizeof(s->prob.p.comp));
     memcpy(dec_params->probs.single_ref_prob, s->prob.p.single_ref, sizeof(s->prob.p.single_ref));
     memcpy(dec_params->probs.comp_ref_prob, s->prob.p.comp_ref, sizeof(s->prob.p.comp_ref));
-    /* FIXME: prediction_mode conversion? */
     memcpy(dec_params->probs.y_mode_probs, s->prob.p.y_mode, sizeof(s->prob.p.y_mode));
     for (unsigned i = 0; i < 10; i++)
         memcpy(dec_params->probs.uv_mode_probs[ff_to_v4l2_intramode[i]],
                s->prob.p.uv_mode[i], sizeof(s->prob.p.uv_mode[0]));
     for (unsigned i = 0; i < 4; i++)
-        memcpy(dec_params->probs.partition_probs[i], s->prob.p.partition[3-i],
+        memcpy(dec_params->probs.partition_probs[i * 4], s->prob.p.partition[3-i],
 	       sizeof(s->prob.p.partition[0]));
-    memcpy(dec_params->probs.partition_probs, s->prob.p.partition, sizeof(s->prob.p.partition));
     memcpy(dec_params->probs.mv_joint_probs, s->prob.p.mv_joint, sizeof(s->prob.p.mv_joint));
     for (unsigned i = 0; i < 2; i++) {
          dec_params->probs.mv_sign_prob[i] = s->prob.p.mv_comp[i].sign;
@@ -422,12 +435,14 @@ static int v4l2_request_vp9_decode_slice(AVCodecContext *avctx,
 	 dec_params->probs.mv_hp_prob[i] = s->prob.p.mv_comp[i].hp;
     }
 
-    printf("%s:%i flags %x size %d\n", __func__, __LINE__, dec_params->flags, size);
-    ff_v4l2_request_append_output_buffer(avctx, s->s.frames[CUR_FRAME].tf.f, buffer, size);
+//    printf("%s:%i flags %x size %x comp hdr size %x uncomp hdr size %x\n", __func__, __LINE__, dec_params->flags, size, s->s.h.compressed_header_size, s->s.h.uncompressed_header_size);
+    return ff_v4l2_request_append_output_buffer(avctx, s->s.frames[CUR_FRAME].tf.f, buffer, size);
+    /*
     unsigned padding = 16 - (size & 15) + 0x80;
     printf("%s:%i padding %x\n", __func__, __LINE__, padding);
     uint8_t pad[0x90] = {};
     return ff_v4l2_request_append_output_buffer(avctx, s->s.frames[CUR_FRAME].tf.f, pad, padding);
+    */
      
 /*
     return ff_v4l2_request_append_output_buffer(avctx, s->s.frames[CUR_FRAME].tf.f,
