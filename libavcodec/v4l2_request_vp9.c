@@ -61,6 +61,7 @@ static int v4l2_request_vp9_set_frame_ctx(AVCodecContext *avctx, unsigned int id
 
 //    printf("%s:%i id %d\n", __func__, __LINE__, id);
 
+    printf("%s:%i set ctx %d\n", __func__, __LINE__, id);
     memcpy(fctx.probs.tx_probs_8x8, s->prob_ctx[id].p.tx8p, sizeof(s->prob_ctx[id].p.tx8p));
     memcpy(fctx.probs.tx_probs_16x16, s->prob_ctx[id].p.tx16p, sizeof(s->prob_ctx[id].p.tx16p));
     memcpy(fctx.probs.tx_probs_32x32, s->prob_ctx[id].p.tx32p, sizeof(s->prob_ctx[id].p.tx32p));
@@ -94,6 +95,10 @@ static int v4l2_request_vp9_set_frame_ctx(AVCodecContext *avctx, unsigned int id
     for (unsigned i = 0; i < 4; i++)
         memcpy(fctx.probs.partition_probs[i * 4], s->prob_ctx[id].p.partition[3-i],
 	       sizeof(s->prob.p.partition[0]));
+    for (unsigned i = 0; i < 16; i++)
+	    printf("set ctx %d partition[%d] = %02x %02x %02x\n", id, i,
+		   fctx.probs.partition_probs[i][0], fctx.probs.partition_probs[i][1],
+		   fctx.probs.partition_probs[i][2]);
     memcpy(fctx.probs.mv_joint_probs, s->prob_ctx[id].p.mv_joint, sizeof(s->prob_ctx[id].p.mv_joint));
     for (unsigned i = 0; i < 2; i++) {
          fctx.probs.mv_sign_prob[i] = s->prob_ctx[id].p.mv_comp[i].sign;
@@ -131,6 +136,7 @@ static int v4l2_request_vp9_get_frame_ctx(AVCodecContext *avctx, unsigned int id
     };
     int ret;
 
+    printf("%s:%i upd ctx %d\n", __func__, __LINE__, id);
     ret = ioctl(ctx->video_fd, VIDIOC_G_EXT_CTRLS, &controls);
     if (ret)
         return ret;
@@ -152,9 +158,14 @@ static int v4l2_request_vp9_get_frame_ctx(AVCodecContext *avctx, unsigned int id
         memcpy(s->prob_ctx[id].p.uv_mode[i],
                fctx.probs.uv_mode_probs[ff_to_v4l2_intramode[i]],
                sizeof(s->prob_ctx[id].p.uv_mode[0]));
-    for (unsigned i = 0; i < 4; i++)
+    for (unsigned i = 0; i < 4; i++) {
         memcpy(s->prob_ctx[id].p.partition[3-i], fctx.probs.partition_probs[i * 4],
 	       sizeof(s->prob.p.partition[0]));
+    }
+    for (unsigned i = 0; i < 16; i++)
+	    printf("get ctx %d partition[%d] = %02x %02x %02x\n", id, i,
+		   fctx.probs.partition_probs[i][0], fctx.probs.partition_probs[i][1],
+		   fctx.probs.partition_probs[i][2]);
     memcpy(s->prob_ctx[id].p.mv_joint, fctx.probs.mv_joint_probs, sizeof(s->prob_ctx[id].p.mv_joint));
     for (unsigned i = 0; i < 2; i++) {
          s->prob_ctx[id].p.mv_comp[i].sign = fctx.probs.mv_sign_prob[i];
@@ -190,6 +201,7 @@ static int v4l2_request_vp9_start_frame(AVCodecContext          *avctx,
             if (memcmp(&s->prob_ctx[i].p, &ff_vp9_default_probs, sizeof(ff_vp9_default_probs)) ||
                 memcmp(s->prob_ctx[i].coef, ff_vp9_default_coef_probs, sizeof(ff_vp9_default_coef_probs)))
 		    exit(1);
+	    printf("%s:%i reset ctx %d\n", __func__, __LINE__, i);
             ret = v4l2_request_vp9_set_frame_ctx(avctx, i);
 	    if (ret)
                 return ret;
@@ -198,6 +210,7 @@ static int v4l2_request_vp9_start_frame(AVCodecContext          *avctx,
             if (memcmp(&s->prob_ctx[s->s.h.framectxid].p, &ff_vp9_default_probs, sizeof(ff_vp9_default_probs)) ||
                 memcmp(s->prob_ctx[s->s.h.framectxid].coef, ff_vp9_default_coef_probs, sizeof(ff_vp9_default_coef_probs)))
 		    exit(1);
+	printf("%s:%i reset ctx %d\n", __func__, __LINE__, s->s.h.framectxid);
         ret = v4l2_request_vp9_set_frame_ctx(avctx, s->s.h.framectxid);
 	if (ret)
             return ret;
@@ -224,6 +237,14 @@ static int v4l2_request_vp9_end_frame(AVCodecContext *avctx)
     if (ret)
         return ret;
 
+    V4L2RequestDescriptor *req = (V4L2RequestDescriptor*)s->s.frames[CUR_FRAME].tf.f->data[0];
+    static int frame = 0;
+    char name[32];
+    sprintf(name, "frame%d", frame++);
+    FILE *f = fopen(name, "w");
+    fwrite(req->capture.addr, req->capture.size, 1, f);
+    fclose(f);
+
 //    sleep(1);
     if (!s->s.h.refreshctx)
         return 0;
@@ -240,6 +261,7 @@ static int v4l2_request_vp9_decode_slice(AVCodecContext *avctx,
     V4L2RequestControlsVP9 *controls = f->hwaccel_picture_private;
     struct v4l2_ctrl_vp9_frame_decode_params *dec_params = &controls->ctrl;
 
+    printf("%s:%i use ctx %d\n", __func__, __LINE__, s->s.h.framectxid);
     if (s->s.h.keyframe)
         dec_params->flags |= V4L2_VP9_FRAME_FLAG_KEY_FRAME;
     if (!s->s.h.invisible)
@@ -436,14 +458,13 @@ static int v4l2_request_vp9_decode_slice(AVCodecContext *avctx,
 	 dec_params->probs.mv_hp_prob[i] = s->prob.p.mv_comp[i].hp;
     }
 
-//    printf("%s:%i flags %x size %x comp hdr size %x uncomp hdr size %x\n", __func__, __LINE__, dec_params->flags, size, s->s.h.compressed_header_size, s->s.h.uncompressed_header_size);
-    return ff_v4l2_request_append_output_buffer(avctx, s->s.frames[CUR_FRAME].tf.f, buffer, size);
-    /*
+    printf("%s:%i frame ctx %d flags %x size %x comp hdr size %x uncomp hdr size %x\n", __func__, __LINE__, dec_params->frame_context_idx, dec_params->flags, size, s->s.h.compressed_header_size, s->s.h.uncompressed_header_size);
+    ff_v4l2_request_append_output_buffer(avctx, s->s.frames[CUR_FRAME].tf.f, buffer, size);
+
     unsigned padding = 16 - (size & 15) + 0x80;
     printf("%s:%i padding %x\n", __func__, __LINE__, padding);
     uint8_t pad[0x90] = {};
     return ff_v4l2_request_append_output_buffer(avctx, s->s.frames[CUR_FRAME].tf.f, pad, padding);
-    */
      
 /*
     return ff_v4l2_request_append_output_buffer(avctx, s->s.frames[CUR_FRAME].tf.f,
