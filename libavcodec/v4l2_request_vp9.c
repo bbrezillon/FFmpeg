@@ -90,7 +90,7 @@ static int v4l2_request_vp9_set_frame_ctx(AVCodecContext *avctx, unsigned int id
         memcpy(fctx.probs.uv_mode_probs[ff_to_v4l2_intramode[i]],
                s->prob_ctx[id].p.uv_mode[i], sizeof(s->prob_ctx[id].p.uv_mode[0]));
         
-    memcpy(fctx.probs.uv_mode_probs, s->prob_ctx[id].p.uv_mode, sizeof(s->prob_ctx[id].p.uv_mode));
+//    memcpy(fctx.probs.uv_mode_probs, s->prob_ctx[id].p.uv_mode, sizeof(s->prob_ctx[id].p.uv_mode));
     for (unsigned i = 0; i < 4; i++)
         memcpy(fctx.probs.partition_probs[i * 4], s->prob_ctx[id].p.partition[3-i],
 	       sizeof(s->prob.p.partition[0]));
@@ -261,7 +261,8 @@ static int v4l2_request_vp9_decode_slice(AVCodecContext *avctx,
     if (avctx->color_range == AVCOL_RANGE_JPEG)
         dec_params->flags |= V4L2_VP9_FRAME_FLAG_COLOR_RANGE_FULL_SWING;
 
-    dec_params->header_size_in_bytes = s->s.h.compressed_header_size;
+    dec_params->compressed_header_size = s->s.h.compressed_header_size;
+    dec_params->uncompressed_header_size = s->s.h.uncompressed_header_size;
     dec_params->profile = s->s.h.profile;
 //    printf("%s:%i profile %d\n", __func__, __LINE__, dec_params->profile);
     dec_params->reset_frame_context = s->s.h.resetctx;

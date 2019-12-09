@@ -303,7 +303,8 @@ enum v4l2_vp9_ref_id {
  */
 struct v4l2_ctrl_vp9_frame_decode_params {
 	__u32 flags;
-	__u16 header_size_in_bytes;
+	__u16 compressed_header_size;
+	__u16 uncompressed_header_size;
 	__u8 profile;
 	__u8 reset_frame_context;
 	__u8 frame_context_idx;
@@ -314,6 +315,7 @@ struct v4l2_ctrl_vp9_frame_decode_params {
 	__u8 tile_rows_log2;
 	__u8 tx_mode;
 	__u8 reference_mode;
+	__u8 padding[6];
 	__u16 frame_width_minus_1;
 	__u16 frame_height_minus_1;
 	__u16 render_width_minus_1;
