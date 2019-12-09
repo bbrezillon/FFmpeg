@@ -697,6 +697,36 @@ static void p010BEToY_c(uint8_t *dst, const uint8_t *src, const uint8_t *unused1
     }
 }
 
+static void p010PackedToY_c(uint8_t *dst, const uint8_t *src,
+			    const uint8_t *unused1, const uint8_t *unused2,
+			    int width, uint32_t *unused)
+{
+    int i, j;
+
+    for (i = 0; i < width; i += 4) {
+        for (j = 0; j < 4 &&  i + j < width; j++) {
+	    const uint8_t *p = &src[(i / 4) * 5];
+            uint16_t y;
+
+	    switch (j) {
+            case 0:
+                y = p[0] | (uint16_t)(p[1] & 0x3) << 8;
+                break;
+            case 1:
+                y = p[1] >> 2 | (uint16_t)(p[2] & 0xf) << 6;
+                break;
+            case 2:
+                y = p[2] >> 4 | (uint16_t)(p[3] & 0x3f) << 4;
+                break;
+            case 3:
+                y = p[3] >> 6 | (uint16_t)(p[4]) << 2;
+                break;
+            }
+            AV_WN16(dst + ((i + j) * 2), y);
+        }
+    }
+}
+
 static void p010LEToUV_c(uint8_t *dstU, uint8_t *dstV,
                        const uint8_t *unused0, const uint8_t *src1, const uint8_t *src2,
                        int width, uint32_t *unused)
@@ -718,6 +748,43 @@ static void p010BEToUV_c(uint8_t *dstU, uint8_t *dstV,
         AV_WN16(dstV + i * 2, AV_RB16(src1 + i * 4 + 2) >> 6);
     }
 }
+
+static void p010PackedToUV_c(uint8_t *dstU, uint8_t *dstV,
+                            const uint8_t *unused0,
+                            const uint8_t *src1, const uint8_t *src2,
+                            int width, uint32_t *unused)
+{
+    int i, j;
+
+    for (i = 0; i < width; i += 4) {
+        for (j = 0; j < 4 &&  i + j < width; j++) {
+	    const uint8_t *p = &src1[(i / 4) * 10];
+            uint16_t u, v;
+
+	    switch (j) {
+            case 0:
+                u = p[0] | (uint16_t)(p[1] & 0x3) << 8;
+                v = p[1] >> 2 | (uint16_t)(p[2] & 0xf) << 6;
+                break;
+            case 1:
+                u = p[2] >> 4 | (uint16_t)(p[3] & 0x3f) << 4;
+                v = p[3] >> 6 | (uint16_t)(p[4]) << 2;
+                break;
+            case 2:
+                u = p[5] | (uint16_t)(p[6] & 0x3) << 8;
+                v = p[6] >> 2 | (uint16_t)(p[7] & 0xf) << 6;
+                break;
+            case 3:
+                u = p[7] >> 4 | (uint16_t)(p[8] & 0x3f) << 4;
+                v = p[8] >> 6 | (uint16_t)(p[9]) << 2;
+                break;
+            }
+            AV_WN16(dstU + ((i + j) * 2), u);
+            AV_WN16(dstV + ((i + j) * 2), v);
+        }
+    }
+}
+
 
 static void p016LEToUV_c(uint8_t *dstU, uint8_t *dstV,
                        const uint8_t *unused0, const uint8_t *src1, const uint8_t *src2,
@@ -984,6 +1051,7 @@ av_cold void ff_sws_init_input_funcs(SwsContext *c)
 {
     enum AVPixelFormat srcFormat = c->srcFormat;
 
+    printf("%s:%i\n", __func__, __LINE__);
     c->chrToYV12 = NULL;
     switch (srcFormat) {
     case AV_PIX_FMT_YUYV422:
@@ -996,6 +1064,7 @@ av_cold void ff_sws_init_input_funcs(SwsContext *c)
         c->chrToYV12 = uyvyToUV_c;
         break;
     case AV_PIX_FMT_NV12:
+    	printf("%s:%i\n", __func__, __LINE__);
         c->chrToYV12 = nv12ToUV_c;
         break;
     case AV_PIX_FMT_NV21:
@@ -1117,6 +1186,12 @@ av_cold void ff_sws_init_input_funcs(SwsContext *c)
         break;
     case AV_PIX_FMT_P010BE:
         c->chrToYV12 = p010BEToUV_c;
+        break;
+    case AV_PIX_FMT_P010LE_PACKED:
+        c->chrToYV12 = p010PackedToUV_c;
+        break;
+    case AV_PIX_FMT_P010BE_PACKED:
+        c->chrToYV12 = p010PackedToUV_c;
         break;
     case AV_PIX_FMT_P016LE:
         c->chrToYV12 = p016LEToUV_c;
@@ -1535,6 +1610,12 @@ av_cold void ff_sws_init_input_funcs(SwsContext *c)
         break;
     case AV_PIX_FMT_P010BE:
         c->lumToYV12 = p010BEToY_c;
+        break;
+    case AV_PIX_FMT_P010LE_PACKED:
+        c->lumToYV12 = p010PackedToY_c;
+        break;
+    case AV_PIX_FMT_P010BE_PACKED:
+        c->lumToYV12 = p010PackedToY_c;
         break;
     }
     if (c->needAlpha) {

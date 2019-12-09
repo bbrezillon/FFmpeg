@@ -130,11 +130,13 @@ static int v4l2_request_dequeue_buffer(V4L2RequestContext *ctx, V4L2RequestBuffe
 
 const uint32_t v4l2_request_capture_pixelformats[] = {
     V4L2_PIX_FMT_NV12,
+    V4L2_PIX_FMT_P010_PACKED,
 #ifdef DRM_FORMAT_MOD_ALLWINNER_TILED
     V4L2_PIX_FMT_SUNXI_TILED_NV12,
 #endif
 };
 
+#define DRM_FORMAT_P010_PACKED  fourcc_code('p', '0', '1', '0')
 static int v4l2_request_set_drm_descriptor(V4L2RequestDescriptor *req, struct v4l2_format *format)
 {
     AVDRMFrameDescriptor *desc = &req->drm;
@@ -146,6 +148,11 @@ static int v4l2_request_set_drm_descriptor(V4L2RequestDescriptor *req, struct v4
         layer->format = DRM_FORMAT_NV12;
         desc->objects[0].format_modifier = DRM_FORMAT_MOD_LINEAR;
         break;
+    case V4L2_PIX_FMT_P010_PACKED:
+	printf("%s:%i\n", __func__, __LINE__);
+        layer->format = DRM_FORMAT_NV12;
+	desc->objects[0].format_modifier = DRM_FORMAT_MOD_LINEAR;
+	break;
 #ifdef DRM_FORMAT_MOD_ALLWINNER_TILED
     case V4L2_PIX_FMT_SUNXI_TILED_NV12:
         layer->format = DRM_FORMAT_NV12;
@@ -825,6 +832,7 @@ int ff_v4l2_request_frame_params(AVCodecContext *avctx, AVBufferRef *hw_frames_c
 
     hwfc->format = AV_PIX_FMT_DRM_PRIME;
     hwfc->sw_format = AV_PIX_FMT_NV12;
+//    hwfc->sw_format = AV_PIX_FMT_P010_PACKED;
     if (V4L2_TYPE_IS_MULTIPLANAR(ctx->format.type)) {
         hwfc->width = ctx->format.fmt.pix_mp.width;
         hwfc->height = ctx->format.fmt.pix_mp.height;

@@ -1734,20 +1734,24 @@ void ff_get_unscaled_swscale(SwsContext *c)
             c->dstFormatBpp < 24 &&
            (c->dstFormatBpp < c->srcFormatBpp || (!isAnyRGB(srcFormat)));
 
+    printf("%s:%i convert %d -> %d\n", __func__, __LINE__, c->srcFormat, c->dstFormat);
     /* yv12_to_nv12 */
     if ((srcFormat == AV_PIX_FMT_YUV420P || srcFormat == AV_PIX_FMT_YUVA420P) &&
         (dstFormat == AV_PIX_FMT_NV12 || dstFormat == AV_PIX_FMT_NV21)) {
+        printf("%s:%i convert %d -> %d\n", __func__, __LINE__, c->srcFormat, c->dstFormat);
         c->swscale = planarToNv12Wrapper;
     }
     /* nv12_to_yv12 */
     if (dstFormat == AV_PIX_FMT_YUV420P &&
         (srcFormat == AV_PIX_FMT_NV12 || srcFormat == AV_PIX_FMT_NV21)) {
+        printf("%s:%i convert %d -> %d\n", __func__, __LINE__, c->srcFormat, c->dstFormat);
         c->swscale = nv12ToPlanarWrapper;
     }
     /* yuv2bgr */
     if ((srcFormat == AV_PIX_FMT_YUV420P || srcFormat == AV_PIX_FMT_YUV422P ||
          srcFormat == AV_PIX_FMT_YUVA420P) && isAnyRGB(dstFormat) &&
         !(flags & SWS_ACCURATE_RND) && (c->dither == SWS_DITHER_BAYER || c->dither == SWS_DITHER_AUTO) && !(dstH & 1)) {
+        printf("%s:%i convert %d -> %d\n", __func__, __LINE__, c->srcFormat, c->dstFormat);
         c->swscale = ff_yuv2rgb_get_func_ptr(c);
     }
     /* yuv420p1x_to_p01x */
@@ -1756,35 +1760,44 @@ void ff_get_unscaled_swscale(SwsContext *c)
          srcFormat == AV_PIX_FMT_YUV420P14 ||
          srcFormat == AV_PIX_FMT_YUV420P16 || srcFormat == AV_PIX_FMT_YUVA420P16) &&
         (dstFormat == AV_PIX_FMT_P010 || dstFormat == AV_PIX_FMT_P016)) {
+        printf("%s:%i convert %d -> %d\n", __func__, __LINE__, c->srcFormat, c->dstFormat);
         c->swscale = planarToP01xWrapper;
     }
     /* yuv420p_to_p01xle */
     if ((srcFormat == AV_PIX_FMT_YUV420P || srcFormat == AV_PIX_FMT_YUVA420P) &&
         (dstFormat == AV_PIX_FMT_P010LE || dstFormat == AV_PIX_FMT_P016LE)) {
+        printf("%s:%i convert %d -> %d\n", __func__, __LINE__, c->srcFormat, c->dstFormat);
         c->swscale = planar8ToP01xleWrapper;
     }
 
     if (srcFormat == AV_PIX_FMT_YUV410P && !(dstH & 3) &&
         (dstFormat == AV_PIX_FMT_YUV420P || dstFormat == AV_PIX_FMT_YUVA420P) &&
         !(flags & SWS_BITEXACT)) {
+        printf("%s:%i convert %d -> %d\n", __func__, __LINE__, c->srcFormat, c->dstFormat);
         c->swscale = yvu9ToYv12Wrapper;
     }
 
     /* bgr24toYV12 */
     if (srcFormat == AV_PIX_FMT_BGR24 &&
         (dstFormat == AV_PIX_FMT_YUV420P || dstFormat == AV_PIX_FMT_YUVA420P) &&
-        !(flags & SWS_ACCURATE_RND))
+        !(flags & SWS_ACCURATE_RND)) {
+        printf("%s:%i convert %d -> %d\n", __func__, __LINE__, c->srcFormat, c->dstFormat);
         c->swscale = bgr24ToYv12Wrapper;
+    }
 
     /* RGB/BGR -> RGB/BGR (no dither needed forms) */
     if (isAnyRGB(srcFormat) && isAnyRGB(dstFormat) && findRgbConvFn(c)
-        && (!needsDither || (c->flags&(SWS_FAST_BILINEAR|SWS_POINT))))
+        && (!needsDither || (c->flags&(SWS_FAST_BILINEAR|SWS_POINT)))) {
+        printf("%s:%i convert %d -> %d\n", __func__, __LINE__, c->srcFormat, c->dstFormat);
         c->swscale = rgbToRgbWrapper;
+    }
 
     /* RGB to planar RGB */
     if ((srcFormat == AV_PIX_FMT_GBRP && dstFormat == AV_PIX_FMT_GBRAP) ||
-        (srcFormat == AV_PIX_FMT_GBRAP && dstFormat == AV_PIX_FMT_GBRP))
+        (srcFormat == AV_PIX_FMT_GBRAP && dstFormat == AV_PIX_FMT_GBRP)) {
+        printf("%s:%i convert %d -> %d\n", __func__, __LINE__, c->srcFormat, c->dstFormat);
         c->swscale = planarRgbToplanarRgbWrapper;
+    }
 
 #define isByteRGB(f) (             \
         f == AV_PIX_FMT_RGB32   || \
@@ -1794,8 +1807,10 @@ void ff_get_unscaled_swscale(SwsContext *c)
         f == AV_PIX_FMT_BGR32_1 || \
         f == AV_PIX_FMT_BGR24)
 
-    if (srcFormat == AV_PIX_FMT_GBRP && isPlanar(srcFormat) && isByteRGB(dstFormat))
+    if (srcFormat == AV_PIX_FMT_GBRP && isPlanar(srcFormat) && isByteRGB(dstFormat)) {
+        printf("%s:%i convert %d -> %d\n", __func__, __LINE__, c->srcFormat, c->dstFormat);
         c->swscale = planarRgbToRgbWrapper;
+    }
 
     if ((srcFormat == AV_PIX_FMT_RGB48LE  || srcFormat == AV_PIX_FMT_RGB48BE  ||
          srcFormat == AV_PIX_FMT_BGR48LE  || srcFormat == AV_PIX_FMT_BGR48BE  ||
@@ -1807,8 +1822,10 @@ void ff_get_unscaled_swscale(SwsContext *c)
          dstFormat == AV_PIX_FMT_GBRP14LE || dstFormat == AV_PIX_FMT_GBRP14BE ||
          dstFormat == AV_PIX_FMT_GBRP16LE || dstFormat == AV_PIX_FMT_GBRP16BE ||
          dstFormat == AV_PIX_FMT_GBRAP12LE || dstFormat == AV_PIX_FMT_GBRAP12BE ||
-         dstFormat == AV_PIX_FMT_GBRAP16LE || dstFormat == AV_PIX_FMT_GBRAP16BE ))
+         dstFormat == AV_PIX_FMT_GBRAP16LE || dstFormat == AV_PIX_FMT_GBRAP16BE )) {
         c->swscale = Rgb16ToPlanarRgb16Wrapper;
+        printf("%s:%i convert %d -> %d\n", __func__, __LINE__, c->srcFormat, c->dstFormat);
+    }
 
     if ((srcFormat == AV_PIX_FMT_GBRP9LE  || srcFormat == AV_PIX_FMT_GBRP9BE  ||
          srcFormat == AV_PIX_FMT_GBRP16LE || srcFormat == AV_PIX_FMT_GBRP16BE ||
@@ -1820,19 +1837,25 @@ void ff_get_unscaled_swscale(SwsContext *c)
         (dstFormat == AV_PIX_FMT_RGB48LE  || dstFormat == AV_PIX_FMT_RGB48BE  ||
          dstFormat == AV_PIX_FMT_BGR48LE  || dstFormat == AV_PIX_FMT_BGR48BE  ||
          dstFormat == AV_PIX_FMT_RGBA64LE || dstFormat == AV_PIX_FMT_RGBA64BE ||
-         dstFormat == AV_PIX_FMT_BGRA64LE || dstFormat == AV_PIX_FMT_BGRA64BE))
+         dstFormat == AV_PIX_FMT_BGRA64LE || dstFormat == AV_PIX_FMT_BGRA64BE)) {
+        printf("%s:%i convert %d -> %d\n", __func__, __LINE__, c->srcFormat, c->dstFormat);
         c->swscale = planarRgb16ToRgb16Wrapper;
+    }
 
     if (av_pix_fmt_desc_get(srcFormat)->comp[0].depth == 8 &&
-        isPackedRGB(srcFormat) && dstFormat == AV_PIX_FMT_GBRP)
+        isPackedRGB(srcFormat) && dstFormat == AV_PIX_FMT_GBRP) {
+        printf("%s:%i convert %d -> %d\n", __func__, __LINE__, c->srcFormat, c->dstFormat);
         c->swscale = rgbToPlanarRgbWrapper;
+    }
 
     if (isBayer(srcFormat)) {
-        if (dstFormat == AV_PIX_FMT_RGB24)
+        if (dstFormat == AV_PIX_FMT_RGB24) {
+            printf("%s:%i convert %d -> %d\n", __func__, __LINE__, c->srcFormat, c->dstFormat);
             c->swscale = bayer_to_rgb24_wrapper;
-        else if (dstFormat == AV_PIX_FMT_YUV420P)
+	} else if (dstFormat == AV_PIX_FMT_YUV420P) {
+            printf("%s:%i convert %d -> %d\n", __func__, __LINE__, c->srcFormat, c->dstFormat);
             c->swscale = bayer_to_yv12_wrapper;
-        else if (!isBayer(dstFormat)) {
+	} else if (!isBayer(dstFormat)) {
             av_log(c, AV_LOG_ERROR, "unsupported bayer conversion\n");
             av_assert0(0);
         }
@@ -1885,39 +1908,58 @@ void ff_get_unscaled_swscale(SwsContext *c)
         IS_DIFFERENT_ENDIANESS(srcFormat, dstFormat, AV_PIX_FMT_YUV444P10) ||
         IS_DIFFERENT_ENDIANESS(srcFormat, dstFormat, AV_PIX_FMT_YUV444P12) ||
         IS_DIFFERENT_ENDIANESS(srcFormat, dstFormat, AV_PIX_FMT_YUV444P14) ||
-        IS_DIFFERENT_ENDIANESS(srcFormat, dstFormat, AV_PIX_FMT_YUV444P16))
+        IS_DIFFERENT_ENDIANESS(srcFormat, dstFormat, AV_PIX_FMT_YUV444P16)) {
+        printf("%s:%i convert %d -> %d\n", __func__, __LINE__, c->srcFormat, c->dstFormat);
         c->swscale = packed_16bpc_bswap;
+    }
 
-    if (usePal(srcFormat) && isByteRGB(dstFormat))
+    if (usePal(srcFormat) && isByteRGB(dstFormat)) {
+        printf("%s:%i convert %d -> %d\n", __func__, __LINE__, c->srcFormat, c->dstFormat);
         c->swscale = palToRgbWrapper;
+    }
 
     if (srcFormat == AV_PIX_FMT_YUV422P) {
-        if (dstFormat == AV_PIX_FMT_YUYV422)
+        if (dstFormat == AV_PIX_FMT_YUYV422) {
+            printf("%s:%i convert %d -> %d\n", __func__, __LINE__, c->srcFormat, c->dstFormat);
             c->swscale = yuv422pToYuy2Wrapper;
-        else if (dstFormat == AV_PIX_FMT_UYVY422)
+	} else if (dstFormat == AV_PIX_FMT_UYVY422) {
+            printf("%s:%i convert %d -> %d\n", __func__, __LINE__, c->srcFormat, c->dstFormat);
             c->swscale = yuv422pToUyvyWrapper;
+	}
     }
 
     /* LQ converters if -sws 0 or -sws 4*/
     if (c->flags&(SWS_FAST_BILINEAR|SWS_POINT)) {
         /* yv12_to_yuy2 */
         if (srcFormat == AV_PIX_FMT_YUV420P || srcFormat == AV_PIX_FMT_YUVA420P) {
-            if (dstFormat == AV_PIX_FMT_YUYV422)
+            if (dstFormat == AV_PIX_FMT_YUYV422) {
+                printf("%s:%i convert %d -> %d\n", __func__, __LINE__, c->srcFormat, c->dstFormat);
                 c->swscale = planarToYuy2Wrapper;
-            else if (dstFormat == AV_PIX_FMT_UYVY422)
+	    } else if (dstFormat == AV_PIX_FMT_UYVY422) {
+                printf("%s:%i convert %d -> %d\n", __func__, __LINE__, c->srcFormat, c->dstFormat);
                 c->swscale = planarToUyvyWrapper;
+            }
         }
     }
     if (srcFormat == AV_PIX_FMT_YUYV422 &&
-       (dstFormat == AV_PIX_FMT_YUV420P || dstFormat == AV_PIX_FMT_YUVA420P))
+       (dstFormat == AV_PIX_FMT_YUV420P || dstFormat == AV_PIX_FMT_YUVA420P)) {
+        printf("%s:%i convert %d -> %d\n", __func__, __LINE__, c->srcFormat, c->dstFormat);
         c->swscale = yuyvToYuv420Wrapper;
+    }
     if (srcFormat == AV_PIX_FMT_UYVY422 &&
-       (dstFormat == AV_PIX_FMT_YUV420P || dstFormat == AV_PIX_FMT_YUVA420P))
+       (dstFormat == AV_PIX_FMT_YUV420P || dstFormat == AV_PIX_FMT_YUVA420P)) {
+        printf("%s:%i convert %d -> %d\n", __func__, __LINE__, c->srcFormat, c->dstFormat);
         c->swscale = uyvyToYuv420Wrapper;
-    if (srcFormat == AV_PIX_FMT_YUYV422 && dstFormat == AV_PIX_FMT_YUV422P)
+    }
+
+    if (srcFormat == AV_PIX_FMT_YUYV422 && dstFormat == AV_PIX_FMT_YUV422P) {
+        printf("%s:%i convert %d -> %d\n", __func__, __LINE__, c->srcFormat, c->dstFormat);
         c->swscale = yuyvToYuv422Wrapper;
-    if (srcFormat == AV_PIX_FMT_UYVY422 && dstFormat == AV_PIX_FMT_YUV422P)
+    }
+    if (srcFormat == AV_PIX_FMT_UYVY422 && dstFormat == AV_PIX_FMT_YUV422P) {
+        printf("%s:%i convert %d -> %d\n", __func__, __LINE__, c->srcFormat, c->dstFormat);
         c->swscale = uyvyToYuv422Wrapper;
+    }
 
 #define isPlanarGray(x) (isGray(x) && (x) != AV_PIX_FMT_YA8 && (x) != AV_PIX_FMT_YA16LE && (x) != AV_PIX_FMT_YA16BE)
     /* simple copy */
@@ -1932,18 +1974,23 @@ void ff_get_unscaled_swscale(SwsContext *c)
          c->chrDstVSubSample == c->chrSrcVSubSample &&
          !isSemiPlanarYUV(srcFormat) && !isSemiPlanarYUV(dstFormat)))
     {
+        printf("%s:%i convert %d -> %d\n", __func__, __LINE__, c->srcFormat, c->dstFormat);
         if (isPacked(c->srcFormat))
             c->swscale = packedCopyWrapper;
         else /* Planar YUV or gray */
             c->swscale = planarCopyWrapper;
     }
 
+    printf("%s:%i convert %d -> %d c->swscale %p\n", __func__, __LINE__, c->srcFormat, c->dstFormat, c->swscale);
+    /*
     if (ARCH_PPC)
         ff_get_unscaled_swscale_ppc(c);
      if (ARCH_ARM)
-         ff_get_unscaled_swscale_arm(c);
+        ff_get_unscaled_swscale_arm(c);
     if (ARCH_AARCH64)
         ff_get_unscaled_swscale_aarch64(c);
+    */
+    printf("%s:%i convert %d -> %d c->swscale %p\n", __func__, __LINE__, c->srcFormat, c->dstFormat, c->swscale);
 }
 
 /* Convert the palette to the same packed 32-bit format as the palette */
