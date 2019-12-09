@@ -49,11 +49,6 @@ void ff_vp9_adapt_probs(VP9Context *s)
     ProbContext *p = &s->prob_ctx[s->s.h.framectxid].p;
     int uf = (s->s.h.keyframe || s->s.h.intraonly || !s->last_keyframe) ? 112 : 128;
 
-    for (unsigned i = 0; i < 4; i++)
-       for (unsigned j = 0; j < 4; j++)
-            printf("before adapt probs ctx %d load partition[%d] = %02x %02x %02x\n", s->s.h.framectxid, i * 4 + j,
-		   p->partition[3-i][j][0], p->partition[3-i][j][1],
-		   p->partition[3-i][j][2]);
     // coefficients
     for (i = 0; i < 4; i++)
         for (j = 0; j < 2; j++)
@@ -77,11 +72,6 @@ void ff_vp9_adapt_probs(VP9Context *s)
         memcpy(p->tx32p, s->prob.p.tx32p, sizeof(p->tx32p));
         memcpy(p->tx16p, s->prob.p.tx16p, sizeof(p->tx16p));
         memcpy(p->tx8p,  s->prob.p.tx8p,  sizeof(p->tx8p));
-    for (unsigned i = 0; i < 4; i++)
-       for (unsigned j = 0; j < 4; j++)
-            printf("after1 adapt probs ctx %d load partition[%d] = %02x %02x %02x\n", s->s.h.framectxid, i * 4 + j,
-		   p->partition[3-i][j][0], p->partition[3-i][j][1],
-		   p->partition[3-i][j][2]);
         return;
     }
 
@@ -281,9 +271,4 @@ void ff_vp9_adapt_probs(VP9Context *s)
         adapt_prob(&pp[7], c[VERT_LEFT_PRED], sum, 20, 128);
         adapt_prob(&pp[8], c[HOR_DOWN_PRED], c[HOR_UP_PRED], 20, 128);
     }
-    for (unsigned i = 0; i < 4; i++)
-       for (unsigned j = 0; j < 4; j++)
-            printf("after2 adapt probs ctx %d load partition[%d] = %02x %02x %02x\n", s->s.h.framectxid, i * 4 + j,
-		   p->partition[3-i][j][0], p->partition[3-i][j][1],
-		   p->partition[3-i][j][2]);
 }

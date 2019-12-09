@@ -62,7 +62,6 @@ int ff_v4l2_request_append_output_buffer(AVCodecContext *avctx, AVFrame *frame, 
     V4L2RequestDescriptor *req = (V4L2RequestDescriptor*)frame->data[0];
     memcpy(req->output.addr + req->output.used, data, size);
     req->output.used += size;
-    printf("%s:%i used %d\n", __func__, __LINE__, req->output.used);
     return 0;
 }
 
@@ -138,7 +137,6 @@ const uint32_t v4l2_request_capture_pixelformats[] = {
 };
 
 #define DRM_FORMAT_P010_PACKED  fourcc_code('p', '0', '1', '0')
-
 static int v4l2_request_set_drm_descriptor(V4L2RequestDescriptor *req, struct v4l2_format *format)
 {
     AVDRMFrameDescriptor *desc = &req->drm;
@@ -370,7 +368,6 @@ static int v4l2_request_set_format(AVCodecContext *avctx, enum v4l2_buf_type typ
     struct v4l2_format format = {0};
 
     format.type = type;
-    printf("%s:%i width %d height %d\n", __func__, __LINE__, avctx->coded_width, avctx->coded_height);
     if (V4L2_TYPE_IS_MULTIPLANAR(type)) {
         format.fmt.pix_mp.width = avctx->coded_width;
         format.fmt.pix_mp.height = avctx->coded_height;
@@ -394,7 +391,6 @@ static int v4l2_request_select_capture_format(AVCodecContext *avctx)
     // TODO: use a supported format (v4l2_request_capture_pixelformats) returned by VIDIOC_G_FMT or VIDIOC_ENUM_FMT
 
     return v4l2_request_set_format(avctx, ctx->format.type, V4L2_PIX_FMT_NV12, 0);
-//    return v4l2_request_set_format(avctx, ctx->format.type, V4L2_PIX_FMT_P010_PACKED, 0);
 }
 
 static int v4l2_request_get_caps(AVCodecContext *avctx, V4L2RequestContext *ctx)
@@ -597,7 +593,7 @@ int ff_v4l2_request_init(AVCodecContext *avctx, uint32_t pixelformat, uint32_t b
         ret = AVERROR(EINVAL);
         goto fail;
     }
-    printf("%s:%i capture W/H %d %d bytesperline %d sizeimage %d\n", __func__, __LINE__, ctx->format.fmt.pix_mp.width, ctx->format.fmt.pix_mp.height, ctx->format.fmt.pix_mp.plane_fmt[0].bytesperline, ctx->format.fmt.pix_mp.plane_fmt[0].sizeimage);
+    printf("%s:%i capture W/H %d %d bytesperline %d\n", __func__, __LINE__, ctx->format.fmt.pix_mp.width, ctx->format.fmt.pix_mp.height, ctx->format.fmt.pix_mp.plane_fmt[0].bytesperline);
 
     if (V4L2_TYPE_IS_MULTIPLANAR(ctx->format.type)) {
         av_log(avctx, AV_LOG_DEBUG, "%s: pixelformat=%d width=%u height=%u bytesperline=%u sizeimage=%u\n", __func__, ctx->format.fmt.pix_mp.pixelformat, ctx->format.fmt.pix_mp.width, ctx->format.fmt.pix_mp.height, ctx->format.fmt.pix_mp.plane_fmt[0].bytesperline, ctx->format.fmt.pix_mp.plane_fmt[0].sizeimage);
@@ -734,13 +730,6 @@ static int v4l2_request_buffer_alloc(AVCodecContext *avctx, V4L2RequestBuffer *b
         }
 
         buf->fd = exportbuffer.fd;
-        void *addr = mmap(NULL, buf->size, PROT_READ | PROT_WRITE, MAP_SHARED, ctx->video_fd, V4L2_TYPE_IS_MULTIPLANAR(type) ? buf->buffer.m.planes[0].m.mem_offset : buf->buffer.m.offset);
-        if (addr == MAP_FAILED) {
-            av_log(avctx, AV_LOG_ERROR, "%s: mmap failed, %s (%d)\n", __func__, strerror(errno), errno);
-            return -1;
-        }
-
-        buf->addr = (uint8_t*)addr;
     }
 
     av_log(avctx, AV_LOG_DEBUG, "%s: buf=%p index=%d fd=%d addr=%p width=%u height=%u size=%u\n", __func__, buf, buf->index, buf->fd, buf->addr, buf->width, buf->height, buf->size);

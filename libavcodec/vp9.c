@@ -478,8 +478,6 @@ static int read_colorspace_details(AVCodecContext *avctx)
     return 0;
 }
 
-static unsigned int num_frame = 0;
-
 static int decode_frame_header(AVCodecContext *avctx,
                                const uint8_t *data, int size, int *ref)
 {
@@ -875,11 +873,6 @@ static int decode_frame_header(AVCodecContext *avctx,
      * as explicit copies if the fw update is missing (and skip the copy upon
      * fw update)? */
     s->prob.p = s->prob_ctx[c].p;
-    for (unsigned i = 0; i < 4; i++)
-       for (unsigned j = 0; j < 4; j++)
-            printf("frame size %d ctx %d load partition[%d] = %02x %02x %02x\n", size, c, i * 4 + j,
-		   s->prob.p.partition[3-i][j][0], s->prob.p.partition[3-i][j][1],
-		   s->prob.p.partition[3-i][j][2]);
 
     // txfm updates
     if (s->s.h.lossless) {
@@ -1009,11 +1002,6 @@ static int decode_frame_header(AVCodecContext *avctx,
                         s->prob.p.partition[3 - i][j][k] =
                             update_prob(&s->c,
                                         s->prob.p.partition[3 - i][j][k]);
-    for (unsigned i = 0; i < 4; i++)
-       for (unsigned j = 0; j < 4; j++)
-            printf("partition[%d] = %02x %02x %02x\n", (i * 4) + j,
-		   s->prob.p.partition[3-i][j][0], s->prob.p.partition[3-i][j][1],
-		   s->prob.p.partition[3-i][j][2]);
 
         // mv fields don't use the update_prob subexp model for some reason
         for (i = 0; i < 3; i++)
@@ -1492,7 +1480,7 @@ static int vp9_decode_frame(AVCodecContext *avctx, void *frame,
                             (!s->s.h.segmentation.enabled || !s->s.h.segmentation.update_map);
     AVFrame *f;
 
-    printf("%s:%i frame %d pkt size %d\n", __func__, __LINE__, num_frame, pkt->size);
+//    printf("%s:%i pkt size %d\n", __func__, __LINE__, pkt->size);
     if ((ret = decode_frame_header(avctx, data, size, &ref)) < 0) {
         return ret;
     } else if (ret == 0) {
@@ -1575,7 +1563,6 @@ FF_ENABLE_DEPRECATION_WARNINGS
         goto finish;
     }
 
-    sleep(1);
     // main tile decode loop
     memset(s->above_partition_ctx, 0, s->cols);
     memset(s->above_skip_ctx, 0, s->cols);
@@ -1608,7 +1595,6 @@ FF_ENABLE_DEPRECATION_WARNINGS
             if (s->s.h.txfmmode == i)
                 break;
         }
-	printf("%s:%i copy probs to ctx\n", __func__, __LINE__);
         s->prob_ctx[s->s.h.framectxid].p = s->prob.p;
         ff_thread_finish_setup(avctx);
     } else if (!s->s.h.refreshctx) {
@@ -1682,7 +1668,6 @@ FF_ENABLE_DEPRECATION_WARNINGS
 
         if (s->pass < 2 && s->s.h.refreshctx && !s->s.h.parallelmode) {
             ff_vp9_adapt_probs(s);
-	    printf("%s:%i adapt probs to ctx\n", __func__, __LINE__);
             ff_thread_finish_setup(avctx);
         }
     } while (s->pass++ == 1);
@@ -1704,7 +1689,6 @@ finish:
         *got_frame = 1;
     }
 
-//    num_frame++;
     return pkt->size;
 }
 
