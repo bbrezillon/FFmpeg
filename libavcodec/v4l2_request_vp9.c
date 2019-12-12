@@ -61,53 +61,53 @@ static int v4l2_request_vp9_set_frame_ctx(AVCodecContext *avctx, unsigned int id
 
 //    printf("%s:%i id %d\n", __func__, __LINE__, id);
 
-    memcpy(fctx.probs.tx_probs_8x8, s->prob_ctx[id].p.tx8p, sizeof(s->prob_ctx[id].p.tx8p));
-    memcpy(fctx.probs.tx_probs_16x16, s->prob_ctx[id].p.tx16p, sizeof(s->prob_ctx[id].p.tx16p));
-    memcpy(fctx.probs.tx_probs_32x32, s->prob_ctx[id].p.tx32p, sizeof(s->prob_ctx[id].p.tx32p));
-//    printf("%s:%i tx32_probs[0][0] %02x\n", __func__, __LINE__, fctx.probs.tx_probs_32x32[0][0]);
-    memcpy(fctx.probs.coef_probs, s->prob_ctx[id].coef, sizeof(s->prob_ctx[id].coef));
+    memcpy(fctx.probs.tx8, s->prob_ctx[id].p.tx8p, sizeof(s->prob_ctx[id].p.tx8p));
+    memcpy(fctx.probs.tx16, s->prob_ctx[id].p.tx16p, sizeof(s->prob_ctx[id].p.tx16p));
+    memcpy(fctx.probs.tx32, s->prob_ctx[id].p.tx32p, sizeof(s->prob_ctx[id].p.tx32p));
+//    printf("%s:%i tx32[0][0] %02x\n", __func__, __LINE__, fctx.probs.tx32[0][0]);
+    memcpy(fctx.probs.coef, s->prob_ctx[id].coef, sizeof(s->prob_ctx[id].coef));
     /*
-    memset(fctx.probs.coef_probs, 0, sizeof(fctx.probs.coef_probs));
+    memset(fctx.probs.coef, 0, sizeof(fctx.probs.coef));
     for (unsigned i = 0; i < 4; i++)
         for (unsigned j = 0; j < 2; j++)
             for (unsigned k = 0; k < 2; k++)
                 for (unsigned l = 0; l < 6; l++)
                     for (unsigned m = 0; m < 6; m++)
-                        memcpy(fctx.probs.coef_probs[i][j][k][l][m],
+                        memcpy(fctx.probs.coef[i][j][k][l][m],
                                s->prob.coef[i][j][k][l][m],
-			       sizeof(fctx.probs.coef_probs[0][0][0][0][0]));
+			       sizeof(fctx.probs.coef[0][0][0][0][0]));
     */
-    memcpy(fctx.probs.skip_prob, s->prob_ctx[id].p.skip, sizeof(s->prob_ctx[id].p.skip));
-    memcpy(fctx.probs.inter_mode_probs, s->prob_ctx[id].p.mv_mode, sizeof(s->prob_ctx[id].p.mv_mode));
-    memcpy(fctx.probs.interp_filter_probs, s->prob_ctx[id].p.filter, sizeof(s->prob_ctx[id].p.filter));
-    memcpy(fctx.probs.is_inter_prob, s->prob_ctx[id].p.intra, sizeof(s->prob_ctx[id].p.intra));
-    memcpy(fctx.probs.comp_mode_prob, s->prob_ctx[id].p.comp, sizeof(s->prob_ctx[id].p.comp));
-    memcpy(fctx.probs.single_ref_prob, s->prob_ctx[id].p.single_ref, sizeof(s->prob_ctx[id].p.single_ref));
-    memcpy(fctx.probs.comp_ref_prob, s->prob_ctx[id].p.comp_ref, sizeof(s->prob_ctx[id].p.comp_ref));
-    memcpy(fctx.probs.y_mode_probs, s->prob_ctx[id].p.y_mode, sizeof(s->prob_ctx[id].p.y_mode));
-//    printf("%s:%i y_mode_probs[0][0] %02x\n", __func__, __LINE__, fctx.probs.y_mode_probs[0][0]);
+    memcpy(fctx.probs.skip, s->prob_ctx[id].p.skip, sizeof(s->prob_ctx[id].p.skip));
+    memcpy(fctx.probs.inter_mode, s->prob_ctx[id].p.mv_mode, sizeof(s->prob_ctx[id].p.mv_mode));
+    memcpy(fctx.probs.interp_filter, s->prob_ctx[id].p.filter, sizeof(s->prob_ctx[id].p.filter));
+    memcpy(fctx.probs.is_inter, s->prob_ctx[id].p.intra, sizeof(s->prob_ctx[id].p.intra));
+    memcpy(fctx.probs.comp_mode, s->prob_ctx[id].p.comp, sizeof(s->prob_ctx[id].p.comp));
+    memcpy(fctx.probs.single_ref, s->prob_ctx[id].p.single_ref, sizeof(s->prob_ctx[id].p.single_ref));
+    memcpy(fctx.probs.comp_ref, s->prob_ctx[id].p.comp_ref, sizeof(s->prob_ctx[id].p.comp_ref));
+    memcpy(fctx.probs.y_mode, s->prob_ctx[id].p.y_mode, sizeof(s->prob_ctx[id].p.y_mode));
+//    printf("%s:%i y_mode[0][0] %02x\n", __func__, __LINE__, fctx.probs.y_mode[0][0]);
     for (unsigned i = 0; i < 10; i++)
-        memcpy(fctx.probs.uv_mode_probs[ff_to_v4l2_intramode[i]],
+        memcpy(fctx.probs.uv_mode[ff_to_v4l2_intramode[i]],
                s->prob_ctx[id].p.uv_mode[i], sizeof(s->prob_ctx[id].p.uv_mode[0]));
         
-//    memcpy(fctx.probs.uv_mode_probs, s->prob_ctx[id].p.uv_mode, sizeof(s->prob_ctx[id].p.uv_mode));
+//    memcpy(fctx.probs.uv_mode, s->prob_ctx[id].p.uv_mode, sizeof(s->prob_ctx[id].p.uv_mode));
     for (unsigned i = 0; i < 4; i++)
-        memcpy(fctx.probs.partition_probs[i * 4], s->prob_ctx[id].p.partition[3-i],
+        memcpy(fctx.probs.partition[i * 4], s->prob_ctx[id].p.partition[3-i],
 	       sizeof(s->prob.p.partition[0]));
-    memcpy(fctx.probs.mv_joint_probs, s->prob_ctx[id].p.mv_joint, sizeof(s->prob_ctx[id].p.mv_joint));
+    memcpy(fctx.probs.mv.joint, s->prob_ctx[id].p.mv_joint, sizeof(s->prob_ctx[id].p.mv_joint));
     for (unsigned i = 0; i < 2; i++) {
-         fctx.probs.mv_sign_prob[i] = s->prob_ctx[id].p.mv_comp[i].sign;
-	 memcpy(fctx.probs.mv_class_probs[i], s->prob_ctx[id].p.mv_comp[i].classes,
+         fctx.probs.mv.sign[i] = s->prob_ctx[id].p.mv_comp[i].sign;
+	 memcpy(fctx.probs.mv.class[i], s->prob_ctx[id].p.mv_comp[i].classes,
                 sizeof(s->prob_ctx[id].p.mv_comp[0].classes));
-         fctx.probs.mv_class0_bit_prob[i] = s->prob_ctx[id].p.mv_comp[i].class0;
-	 memcpy(fctx.probs.mv_bits_prob[i], s->prob_ctx[id].p.mv_comp[i].bits,
+         fctx.probs.mv.class0_bit[i] = s->prob_ctx[id].p.mv_comp[i].class0;
+	 memcpy(fctx.probs.mv.bits[i], s->prob_ctx[id].p.mv_comp[i].bits,
                 sizeof(s->prob_ctx[id].p.mv_comp[0].bits));
-	 memcpy(fctx.probs.mv_class0_fr_probs[i], s->prob_ctx[id].p.mv_comp[i].class0_fp,
+	 memcpy(fctx.probs.mv.class0_fr[i], s->prob_ctx[id].p.mv_comp[i].class0_fp,
                 sizeof(s->prob_ctx[id].p.mv_comp[0].class0_fp));
-	 memcpy(fctx.probs.mv_fr_probs[i], s->prob_ctx[id].p.mv_comp[i].fp,
+	 memcpy(fctx.probs.mv.fr[i], s->prob_ctx[id].p.mv_comp[i].fp,
                 sizeof(s->prob_ctx[id].p.mv_comp[0].fp));
-	 fctx.probs.mv_class0_hp_prob[i] = s->prob_ctx[id].p.mv_comp[i].class0_hp;
-	 fctx.probs.mv_hp_prob[i] = s->prob_ctx[id].p.mv_comp[i].hp;
+	 fctx.probs.mv.class0_hp[i] = s->prob_ctx[id].p.mv_comp[i].class0_hp;
+	 fctx.probs.mv.hp[i] = s->prob_ctx[id].p.mv_comp[i].hp;
     }
 
     return ioctl(ctx->video_fd, VIDIOC_S_EXT_CTRLS, &controls);
@@ -135,40 +135,40 @@ static int v4l2_request_vp9_get_frame_ctx(AVCodecContext *avctx, unsigned int id
     if (ret)
         return ret;
 
-    memcpy(s->prob_ctx[id].p.tx8p, fctx.probs.tx_probs_8x8, sizeof(s->prob_ctx[id].p.tx8p));
-    memcpy(s->prob_ctx[id].p.tx16p, fctx.probs.tx_probs_16x16, sizeof(s->prob_ctx[id].p.tx16p));
-    memcpy(s->prob_ctx[id].p.tx32p, fctx.probs.tx_probs_32x32, sizeof(s->prob_ctx[id].p.tx32p));
-    memcpy(s->prob_ctx[id].coef, fctx.probs.coef_probs, sizeof(s->prob_ctx[id].coef));
-    memcpy(s->prob_ctx[id].p.skip, fctx.probs.skip_prob, sizeof(s->prob_ctx[id].p.skip));
-    memcpy(s->prob_ctx[id].p.mv_mode, fctx.probs.inter_mode_probs, sizeof(s->prob_ctx[id].p.mv_mode));
-    memcpy(s->prob_ctx[id].p.filter, fctx.probs.interp_filter_probs, sizeof(s->prob_ctx[id].p.filter));
-    memcpy(s->prob_ctx[id].p.intra, fctx.probs.is_inter_prob, sizeof(s->prob_ctx[id].p.intra));
-    memcpy(s->prob_ctx[id].p.comp, fctx.probs.comp_mode_prob, sizeof(s->prob_ctx[id].p.comp));
-    memcpy(s->prob_ctx[id].p.single_ref, fctx.probs.single_ref_prob, sizeof(s->prob_ctx[id].p.single_ref));
-    memcpy(s->prob_ctx[id].p.comp_ref, fctx.probs.comp_ref_prob, sizeof(s->prob_ctx[id].p.comp_ref));
+    memcpy(s->prob_ctx[id].p.tx8p, fctx.probs.tx8, sizeof(s->prob_ctx[id].p.tx8p));
+    memcpy(s->prob_ctx[id].p.tx16p, fctx.probs.tx16, sizeof(s->prob_ctx[id].p.tx16p));
+    memcpy(s->prob_ctx[id].p.tx32p, fctx.probs.tx32, sizeof(s->prob_ctx[id].p.tx32p));
+    memcpy(s->prob_ctx[id].coef, fctx.probs.coef, sizeof(s->prob_ctx[id].coef));
+    memcpy(s->prob_ctx[id].p.skip, fctx.probs.skip, sizeof(s->prob_ctx[id].p.skip));
+    memcpy(s->prob_ctx[id].p.mv_mode, fctx.probs.inter_mode, sizeof(s->prob_ctx[id].p.mv_mode));
+    memcpy(s->prob_ctx[id].p.filter, fctx.probs.interp_filter, sizeof(s->prob_ctx[id].p.filter));
+    memcpy(s->prob_ctx[id].p.intra, fctx.probs.is_inter, sizeof(s->prob_ctx[id].p.intra));
+    memcpy(s->prob_ctx[id].p.comp, fctx.probs.comp_mode, sizeof(s->prob_ctx[id].p.comp));
+    memcpy(s->prob_ctx[id].p.single_ref, fctx.probs.single_ref, sizeof(s->prob_ctx[id].p.single_ref));
+    memcpy(s->prob_ctx[id].p.comp_ref, fctx.probs.comp_ref, sizeof(s->prob_ctx[id].p.comp_ref));
     /* FIXME: prediction_mode conversion? */
-    memcpy(s->prob_ctx[id].p.y_mode, fctx.probs.y_mode_probs, sizeof(s->prob_ctx[id].p.y_mode));
+    memcpy(s->prob_ctx[id].p.y_mode, fctx.probs.y_mode, sizeof(s->prob_ctx[id].p.y_mode));
     for (unsigned i = 0; i < 10; i++)
         memcpy(s->prob_ctx[id].p.uv_mode[i],
-               fctx.probs.uv_mode_probs[ff_to_v4l2_intramode[i]],
+               fctx.probs.uv_mode[ff_to_v4l2_intramode[i]],
                sizeof(s->prob_ctx[id].p.uv_mode[0]));
     for (unsigned i = 0; i < 4; i++)
-        memcpy(s->prob_ctx[id].p.partition[3-i], fctx.probs.partition_probs[i * 4],
+        memcpy(s->prob_ctx[id].p.partition[3-i], fctx.probs.partition[i * 4],
 	       sizeof(s->prob.p.partition[0]));
-    memcpy(s->prob_ctx[id].p.mv_joint, fctx.probs.mv_joint_probs, sizeof(s->prob_ctx[id].p.mv_joint));
+    memcpy(s->prob_ctx[id].p.mv_joint, fctx.probs.mv.joint, sizeof(s->prob_ctx[id].p.mv_joint));
     for (unsigned i = 0; i < 2; i++) {
-         s->prob_ctx[id].p.mv_comp[i].sign = fctx.probs.mv_sign_prob[i];
-	 memcpy(s->prob_ctx[id].p.mv_comp[i].classes, fctx.probs.mv_class_probs[i],
+         s->prob_ctx[id].p.mv_comp[i].sign = fctx.probs.mv.sign[i];
+	 memcpy(s->prob_ctx[id].p.mv_comp[i].classes, fctx.probs.mv.class[i],
                 sizeof(s->prob_ctx[id].p.mv_comp[0].classes));
-         s->prob_ctx[id].p.mv_comp[i].class0 = fctx.probs.mv_class0_bit_prob[i];
-	 memcpy(s->prob_ctx[id].p.mv_comp[i].bits, fctx.probs.mv_bits_prob[i],
+         s->prob_ctx[id].p.mv_comp[i].class0 = fctx.probs.mv.class0_bit[i];
+	 memcpy(s->prob_ctx[id].p.mv_comp[i].bits, fctx.probs.mv.bits[i],
                 sizeof(s->prob_ctx[id].p.mv_comp[0].bits));
-	 memcpy(s->prob_ctx[id].p.mv_comp[i].class0_fp, fctx.probs.mv_class0_fr_probs[i],
+	 memcpy(s->prob_ctx[id].p.mv_comp[i].class0_fp, fctx.probs.mv.class0_fr[i],
                 sizeof(s->prob_ctx[id].p.mv_comp[0].class0_fp));
-	 memcpy(s->prob_ctx[id].p.mv_comp[i].fp, fctx.probs.mv_fr_probs[i],
+	 memcpy(s->prob_ctx[id].p.mv_comp[i].fp, fctx.probs.mv.fr[i],
                 sizeof(s->prob_ctx[id].p.mv_comp[0].fp));
-	 s->prob_ctx[id].p.mv_comp[i].class0_hp = fctx.probs.mv_class0_hp_prob[i];
-	 s->prob_ctx[id].p.mv_comp[i].hp = fctx.probs.mv_hp_prob[i];
+	 s->prob_ctx[id].p.mv_comp[i].class0_hp = fctx.probs.mv.class0_hp[i];
+	 s->prob_ctx[id].p.mv_comp[i].hp = fctx.probs.mv.hp[i];
     }
 
 //    printf("%s:%i id %d\n", __func__, __LINE__, id);
@@ -210,6 +210,7 @@ static int v4l2_request_vp9_end_frame(AVCodecContext *avctx)
 {
     const VP9Context *s = avctx->priv_data;
     V4L2RequestControlsVP9 *controls = s->s.frames[CUR_FRAME].hwaccel_picture_private;
+    struct v4l2_ctrl_vp9_frame_decode_params *dec_params = &controls->ctrl;
     struct v4l2_ext_control control[] = {
         {
             .id = V4L2_CID_MPEG_VIDEO_VP9_FRAME_DECODE_PARAMS,
@@ -219,6 +220,8 @@ static int v4l2_request_vp9_end_frame(AVCodecContext *avctx)
     };
     int ret;
 
+    printf("%s:%i qdelta %d %d %d\n", __func__, __LINE__, dec_params->quant.delta_q_y_dc, dec_params->quant.delta_q_uv_dc, dec_params->quant.delta_q_uv_ac);
+    printf("%s:%i W-1/H-1 %d/%d\n", __func__, __LINE__, dec_params->frame_width_minus_1, dec_params->frame_height_minus_1);
     ret = ff_v4l2_request_decode_frame(avctx, s->s.frames[CUR_FRAME].tf.f,
 				       control, FF_ARRAY_ELEMS(control));
     if (ret)
@@ -268,7 +271,7 @@ static int v4l2_request_vp9_decode_slice(AVCodecContext *avctx,
     dec_params->reset_frame_context = s->s.h.resetctx;
     dec_params->frame_context_idx = s->s.h.framectxid;
     dec_params->bit_depth = s->s.h.bpp;
-    printf("%s:%i bit_depth %d\n", __func__, __LINE__, dec_params->bit_depth);
+    //printf("%s:%i bit_depth %d\n", __func__, __LINE__, dec_params->bit_depth);
 
     switch (avctx->colorspace) {
     case AVCOL_SPC_UNSPECIFIED:
@@ -304,7 +307,7 @@ static int v4l2_request_vp9_decode_slice(AVCodecContext *avctx,
     dec_params->reference_mode = s->s.h.comppredmode;
     dec_params->frame_width_minus_1 = s->w - 1;
     dec_params->frame_height_minus_1 = s->h - 1;
-//    printf("%s:%i W/H %d/%d\n", __func__, __LINE__, s->w, s->h);
+    printf("%s:%i W/H %d/%d\n", __func__, __LINE__, s->w, s->h);
     /* render width/height are ignored for now. */
 
     for (unsigned i = 0; i < 3; i++) {
@@ -337,8 +340,7 @@ static int v4l2_request_vp9_decode_slice(AVCodecContext *avctx,
     dec_params->quant.delta_q_y_dc = s->s.h.ydc_qdelta;
     dec_params->quant.delta_q_uv_dc = s->s.h.uvdc_qdelta;
     dec_params->quant.delta_q_uv_ac = s->s.h.uvac_qdelta;
-    if (s->s.h.lossless)
-        dec_params->quant.flags |= V4L2_VP9_QUANTIZATION_FLAG_LOSSLESS;
+    printf("%s:%i qdelta %d %d %d\n", __func__, __LINE__, dec_params->quant.delta_q_y_dc, dec_params->quant.delta_q_uv_dc, dec_params->quant.delta_q_uv_ac);
 
     if (s->s.h.segmentation.enabled)
         dec_params->seg.flags |= V4L2_VP9_SEGMENTATION_FLAG_ENABLED;
@@ -359,81 +361,81 @@ static int v4l2_request_vp9_decode_slice(AVCodecContext *avctx,
 
     for (unsigned i = 0; i < 8; i++) {
         if (s->s.h.segmentation.feat[i].q_enabled) {
-            dec_params->seg.feature_enabled[i] |= 1 << V4L2_VP9_SEGMENTATION_FEATURE_QP_DELTA;
-            dec_params->seg.feature_data[i][V4L2_VP9_SEGMENTATION_FEATURE_QP_DELTA] = s->s.h.segmentation.feat[i].q_val;
+            dec_params->seg.feature_enabled[i] |= 1 << V4L2_VP9_SEGMENT_FEATURE_QP_DELTA;
+            dec_params->seg.feature_data[i][V4L2_VP9_SEGMENT_FEATURE_QP_DELTA] = s->s.h.segmentation.feat[i].q_val;
 	}
 
         if (s->s.h.segmentation.feat[i].lf_enabled) {
-            dec_params->seg.feature_enabled[i] |= 1 << V4L2_VP9_SEGMENTATION_FEATURE_LF_VAL;
-            dec_params->seg.feature_data[i][V4L2_VP9_SEGMENTATION_FEATURE_LF_VAL] = s->s.h.segmentation.feat[i].lf_val;
+            dec_params->seg.feature_enabled[i] |= 1 << V4L2_VP9_SEGMENT_FEATURE_LF;
+            dec_params->seg.feature_data[i][V4L2_VP9_SEGMENT_FEATURE_LF] = s->s.h.segmentation.feat[i].lf_val;
 	}
 
         if (s->s.h.segmentation.feat[i].ref_enabled) {
-            dec_params->seg.feature_enabled[i] |= 1 << V4L2_VP9_SEGMENTATION_FEATURE_REFERINFO;
-            dec_params->seg.feature_data[i][V4L2_VP9_SEGMENTATION_FEATURE_REFERINFO] = s->s.h.segmentation.feat[i].ref_val;
+            dec_params->seg.feature_enabled[i] |= 1 << V4L2_VP9_SEGMENT_FEATURE_REF_FRAME;
+            dec_params->seg.feature_data[i][V4L2_VP9_SEGMENT_FEATURE_REF_FRAME] = s->s.h.segmentation.feat[i].ref_val;
 	}
 
         if (s->s.h.segmentation.feat[i].skip_enabled)
-            dec_params->seg.feature_enabled[i] |= 1 << V4L2_VP9_SEGMENTATION_FEATURE_FRAME_SKIP;
+            dec_params->seg.feature_enabled[i] |= 1 << V4L2_VP9_SEGMENT_FEATURE_SKIP;
     }
 
-    memcpy(dec_params->probs.tx_probs_8x8, s->prob.p.tx8p, sizeof(s->prob.p.tx8p));
+    memcpy(dec_params->probs.tx8, s->prob.p.tx8p, sizeof(s->prob.p.tx8p));
 //    for (unsigned i = 0; i < 2; i++)
-//       printf("txp8[%d][0] %02x\n", i, dec_params->probs.tx_probs_8x8[i][0]);
+//       printf("txp8[%d][0] %02x\n", i, dec_params->probs.tx8[i][0]);
 
-    memcpy(dec_params->probs.tx_probs_16x16, s->prob.p.tx16p, sizeof(s->prob.p.tx16p));
+    memcpy(dec_params->probs.tx16, s->prob.p.tx16p, sizeof(s->prob.p.tx16p));
 //    for (unsigned i = 0; i < 2; i++)
 //       for (unsigned j = 0; j < 2; j++)
-//           printf("txp16[%d][%d] %02x\n", i, j, dec_params->probs.tx_probs_16x16[i][j]);
-    memcpy(dec_params->probs.tx_probs_32x32, s->prob.p.tx32p, sizeof(s->prob.p.tx32p));
+//           printf("txp16[%d][%d] %02x\n", i, j, dec_params->probs.tx16[i][j]);
+    memcpy(dec_params->probs.tx32, s->prob.p.tx32p, sizeof(s->prob.p.tx32p));
 //    for (unsigned i = 0; i < 2; i++)
 //       for (unsigned j = 0; j < 3; j++)
-//           printf("txp32[%d][%d] %02x\n", i, j, dec_params->probs.tx_probs_32x32[i][j]);
+//           printf("txp32[%d][%d] %02x\n", i, j, dec_params->probs.tx32[i][j]);
     for (unsigned i = 0; i < 4; i++) {
         for (unsigned j = 0; j < 2; j++) {
             for (unsigned k = 0; k < 2; k++) {
                 for (unsigned l = 0; l < 6; l++) {
                     for (unsigned m = 0; m < 6; m++) {
-                        memcpy(dec_params->probs.coef_probs[i][j][k][l][m],
+                        memcpy(dec_params->probs.coef[i][j][k][l][m],
                                s->prob.coef[i][j][k][l][m],
-			       sizeof(dec_params->probs.coef_probs[0][0][0][0][0]));
+			       sizeof(dec_params->probs.coef[0][0][0][0][0]));
 //			for (unsigned n = 0; n < 3; n++)
-//                            printf("coef_probs[%d][%d][%d][%d][%d][%d] = %02x\n", i, j, k, l, m, n, dec_params->probs.coef_probs[i][j][k][l][m][n]);
+//                            printf("coef[%d][%d][%d][%d][%d][%d] = %02x\n", i, j, k, l, m, n, dec_params->probs.coef[i][j][k][l][m][n]);
 		    }
                 }
             }
         }
     }
-    memcpy(dec_params->probs.skip_prob, s->prob.p.skip, sizeof(s->prob.p.skip));
-    memcpy(dec_params->probs.inter_mode_probs, s->prob.p.mv_mode, sizeof(s->prob.p.mv_mode));
-    memcpy(dec_params->probs.interp_filter_probs, s->prob.p.filter, sizeof(s->prob.p.filter));
-    memcpy(dec_params->probs.is_inter_prob, s->prob.p.intra, sizeof(s->prob.p.intra));
+    memcpy(dec_params->probs.skip, s->prob.p.skip, sizeof(s->prob.p.skip));
+    memcpy(dec_params->probs.inter_mode, s->prob.p.mv_mode, sizeof(s->prob.p.mv_mode));
+    memcpy(dec_params->probs.interp_filter, s->prob.p.filter, sizeof(s->prob.p.filter));
+    memcpy(dec_params->probs.is_inter, s->prob.p.intra, sizeof(s->prob.p.intra));
 //    for (unsigned i = 0; i < 4; i++)
-//        printf("is_inter_prob[%d] = %02x\n", i, dec_params->probs.is_inter_prob[i]);
-    memcpy(dec_params->probs.comp_mode_prob, s->prob.p.comp, sizeof(s->prob.p.comp));
-    memcpy(dec_params->probs.single_ref_prob, s->prob.p.single_ref, sizeof(s->prob.p.single_ref));
-    memcpy(dec_params->probs.comp_ref_prob, s->prob.p.comp_ref, sizeof(s->prob.p.comp_ref));
-    memcpy(dec_params->probs.y_mode_probs, s->prob.p.y_mode, sizeof(s->prob.p.y_mode));
+//        printf("is_inter[%d] = %02x\n", i, dec_params->probs.is_inter[i]);
+    memcpy(dec_params->probs.comp_mode, s->prob.p.comp, sizeof(s->prob.p.comp));
+    memcpy(dec_params->probs.single_ref, s->prob.p.single_ref, sizeof(s->prob.p.single_ref));
+    memcpy(dec_params->probs.comp_ref, s->prob.p.comp_ref, sizeof(s->prob.p.comp_ref));
+    memcpy(dec_params->probs.y_mode, s->prob.p.y_mode, sizeof(s->prob.p.y_mode));
     for (unsigned i = 0; i < 10; i++)
-        memcpy(dec_params->probs.uv_mode_probs[ff_to_v4l2_intramode[i]],
+        memcpy(dec_params->probs.uv_mode[ff_to_v4l2_intramode[i]],
                s->prob.p.uv_mode[i], sizeof(s->prob.p.uv_mode[0]));
     for (unsigned i = 0; i < 4; i++)
-        memcpy(dec_params->probs.partition_probs[i * 4], s->prob.p.partition[3-i],
+        memcpy(dec_params->probs.partition[i * 4], s->prob.p.partition[3-i],
 	       sizeof(s->prob.p.partition[0]));
-    memcpy(dec_params->probs.mv_joint_probs, s->prob.p.mv_joint, sizeof(s->prob.p.mv_joint));
+    memcpy(dec_params->probs.mv.joint, s->prob.p.mv_joint, sizeof(s->prob.p.mv_joint));
     for (unsigned i = 0; i < 2; i++) {
-         dec_params->probs.mv_sign_prob[i] = s->prob.p.mv_comp[i].sign;
-	 memcpy(dec_params->probs.mv_class_probs[i], s->prob.p.mv_comp[i].classes,
+         dec_params->probs.mv.sign[i] = s->prob.p.mv_comp[i].sign;
+	 memcpy(dec_params->probs.mv.class[i], s->prob.p.mv_comp[i].classes,
                 sizeof(s->prob.p.mv_comp[0].classes));
-         dec_params->probs.mv_class0_bit_prob[i] = s->prob.p.mv_comp[i].class0;
-	 memcpy(dec_params->probs.mv_bits_prob[i], s->prob.p.mv_comp[i].bits,
+         dec_params->probs.mv.class0_bit[i] = s->prob.p.mv_comp[i].class0;
+	 memcpy(dec_params->probs.mv.bits[i], s->prob.p.mv_comp[i].bits,
                 sizeof(s->prob.p.mv_comp[0].bits));
-	 memcpy(dec_params->probs.mv_class0_fr_probs[i], s->prob.p.mv_comp[i].class0_fp,
+	 memcpy(dec_params->probs.mv.class0_fr[i], s->prob.p.mv_comp[i].class0_fp,
                 sizeof(s->prob.p.mv_comp[0].class0_fp));
-	 memcpy(dec_params->probs.mv_fr_probs[i], s->prob.p.mv_comp[i].fp,
+	 memcpy(dec_params->probs.mv.fr[i], s->prob.p.mv_comp[i].fp,
                 sizeof(s->prob.p.mv_comp[0].fp));
-	 dec_params->probs.mv_class0_hp_prob[i] = s->prob.p.mv_comp[i].class0_hp;
-	 dec_params->probs.mv_hp_prob[i] = s->prob.p.mv_comp[i].hp;
+	 dec_params->probs.mv.class0_hp[i] = s->prob.p.mv_comp[i].class0_hp;
+	 dec_params->probs.mv.hp[i] = s->prob.p.mv_comp[i].hp;
     }
 
 //    printf("%s:%i flags %x size %x comp hdr size %x uncomp hdr size %x\n", __func__, __LINE__, dec_params->flags, size, s->s.h.compressed_header_size, s->s.h.uncompressed_header_size);

@@ -662,6 +662,7 @@ static int decode_frame_header(AVCodecContext *avctx,
     s->s.h.ydc_qdelta  = get_bits1(&s->gb) ? get_sbits_inv(&s->gb, 4) : 0;
     s->s.h.uvdc_qdelta = get_bits1(&s->gb) ? get_sbits_inv(&s->gb, 4) : 0;
     s->s.h.uvac_qdelta = get_bits1(&s->gb) ? get_sbits_inv(&s->gb, 4) : 0;
+    printf("%s:%i qdelta %d %d %d\n", __func__, __LINE__, s->s.h.ydc_qdelta,  s->s.h.uvdc_qdelta, s->s.h.uvac_qdelta);
     s->s.h.lossless    = s->s.h.yac_qi == 0 && s->s.h.ydc_qdelta == 0 &&
                        s->s.h.uvdc_qdelta == 0 && s->s.h.uvac_qdelta == 0;
     if (s->s.h.lossless)
