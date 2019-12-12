@@ -62,6 +62,11 @@ static void fill_dpb_entry(struct v4l2_h264_dpb_entry *entry, const H264Picture 
     entry->frame_num = pic->frame_num;
     entry->pic_num = pic->pic_id;
     entry->flags = V4L2_H264_DPB_ENTRY_FLAG_VALID;
+    if (pic->field_picture) {
+        entry->flags |= V4L2_H264_DPB_ENTRY_FLAG_FIELD;
+        if (pic->reference & PICT_BOTTOM_FIELD)
+            entry->flags |= V4L2_H264_DPB_ENTRY_FLAG_BOTTOM_FIELD;
+    }
     if (pic->reference)
         entry->flags |= V4L2_H264_DPB_ENTRY_FLAG_ACTIVE;
     if (pic->long_ref)
@@ -189,7 +194,7 @@ int v4l2_query_h264_start_code(AVCodecContext *avctx)
     struct v4l2_queryctrl ctrl = {0};
     int ret, i;
 
-    ctrl.id = V4L2_CID_MPEG_VIDEO_H264_STARTCODE;
+    ctrl.id = V4L2_CID_MPEG_VIDEO_H264_START_CODE;
     ret = ioctl(ctx->video_fd, VIDIOC_QUERYCTRL, &ctrl);
     if (ret < 0) {
         av_log(avctx, AV_LOG_ERROR, "%s: query control failed, %s (%d)\n", __func__, strerror(errno), errno);
@@ -379,7 +384,7 @@ static int v4l2_request_h264_decode_slice(AVCodecContext *avctx, const uint8_t *
     if (count)
         fill_weight_factors(&controls->slice_params[slice].pred_weight_table.weight_factors[1], 1, sl);
 
-    if (v4l2_ctx->start_code_support & (1 << V4L2_MPEG_VIDEO_H264_ANNEX_B_STARTCODE)) {
+    if (v4l2_ctx->start_code_support & (1 << V4L2_MPEG_VIDEO_H264_START_CODE_ANNEX_B)) {
         ret = ff_v4l2_request_append_output_buffer(avctx, h->cur_pic_ptr->f, nalu_slice_start_code, 3);
         if (ret)
             return ret;

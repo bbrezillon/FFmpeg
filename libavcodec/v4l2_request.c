@@ -236,9 +236,11 @@ int ff_v4l2_request_decode_frame(AVCodecContext *avctx, AVFrame *frame, struct v
         return -1;
     }
 
-    ret = v4l2_request_dequeue_buffer(ctx, &req->capture);
+    do {
+        ret = v4l2_request_dequeue_buffer(ctx, &req->capture);
+    } while (ret < 0 && errno == EAGAIN);
     if (ret < 0) {
-        av_log(avctx, AV_LOG_ERROR, "%s: dequeue capture buffer %d failed for request %d, %s (%d)\n", __func__, req->capture.index, req->request_fd, strerror(errno), errno);
+        av_log(avctx, AV_LOG_ERROR, "%s(%i): dequeue capture buffer %d failed for request %d, %s (%d)\n", __func__, __LINE__, req->capture.index, req->request_fd, strerror(errno), errno);
         return -1;
     }
 
@@ -258,9 +260,11 @@ fail:
     if (ret < 0)
         av_log(avctx, AV_LOG_ERROR, "%s: dequeue output buffer %d failed for request %d, %s (%d)\n", __func__, req->output.index, req->request_fd, strerror(errno), errno);
 
-    ret = v4l2_request_dequeue_buffer(ctx, &req->capture);
+    do {
+        ret = v4l2_request_dequeue_buffer(ctx, &req->capture);
+    } while (ret < 0 && errno == EAGAIN);
     if (ret < 0)
-        av_log(avctx, AV_LOG_ERROR, "%s: dequeue capture buffer %d failed for request %d, %s (%d)\n", __func__, req->capture.index, req->request_fd, strerror(errno), errno);
+        av_log(avctx, AV_LOG_ERROR, "%s(%i): dequeue capture buffer %d failed for request %d, %s (%d)\n", __func__, __LINE__, req->capture.index, req->request_fd, strerror(errno), errno);
 
     ret = ioctl(req->request_fd, MEDIA_REQUEST_IOC_REINIT, NULL);
     if (ret < 0)
